@@ -10,7 +10,7 @@ Raw facts are kept separately from interpretations. Historical records are not o
 
 ## Current initial dataset
 
-The repository now contains the first structured squad snapshot reconstructed from the 20 player screenshots supplied in the conversation.
+The repository contains the first structured squad snapshot reconstructed from the 20 player screenshots supplied in the conversation.
 
 - In-game date: **2025-12-22**
 - Season: **2025/26**
@@ -50,19 +50,19 @@ The 2025-12-22 game date is inferred from the screenshots: the displayed ages al
 
 The repository stores the **schema, structured source data and import/query tools**. The binary `fm26.sqlite3` file is generated locally and ignored by Git.
 
-Initialize:
+Initialize the database:
 
 ```bash
 python3 scripts/init_db.py
 ```
 
-Import the initial dataset:
+Import the committed initial screenshot dataset:
 
 ```bash
-python3 scripts/import_json.py data/initial_valencia_snapshot_2025-12-22.json
+python3 scripts/import_initial_snapshot.py
 ```
 
-Verify:
+Verify the initial dataset:
 
 ```bash
 python3 scripts/verify_db.py
@@ -75,6 +75,8 @@ python3 scripts/query.py "SELECT * FROM players;"
 ```
 
 Example queries are in `db/example_queries.sql`.
+
+The initial source dataset is stored as a gzip-compressed, base64-encoded JSON file so the complete 714-attribute dataset can live in Git without an enormous formatted JSON blob. The helper decodes it transparently before import.
 
 ## Data workflow
 
