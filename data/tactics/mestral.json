@@ -4,11 +4,12 @@
     "in_game_tactic_slot": "1 4-1-2-2-1 Főleny",
     "source": "screenshots - Taktika tervező (Alakzat, Csapatutasítás, Játékos szerepkörök)",
     "captured_real_date": "2026-08-11",
-    "game_date": null,
-    "game_date_note": "Not visible on the captured screens. Next fixture shown was Elche (H) in 3 days, competition First Division.",
+    "game_date": "2026-01-06",
+    "game_date_note": "Confirmed by the manager. Next fixture on the captured screens was Elche (H) in 3 days, First Division.",
     "club": "Valencia",
     "role_application": "All roles are set on the 'Pozíció' tab. No player has a 'Személyre szabott' (individual) role, so role belongs to the slot, not the player.",
-    "personnel_note": "The captured screens come from different moments and show rotated personnel. The slot roles are identical across them; only the names differ. Both observed line-ups are recorded."
+    "personnel_note": "The captured screens come from different moments and show rotated personnel. The slot roles are identical across them; only the names differ. Both observed line-ups are recorded.",
+    "season": "2025/26"
   },
   "style": {
     "tactical_style_hu": "Mezőnyfölény",
@@ -24,68 +25,156 @@
     {
       "slot": "GK",
       "ui_label": "KA",
-      "in_possession": { "hu": "Ball-Playing Goalkeeper", "en": "Ball-Playing Goalkeeper", "pitch_code": "BGK" },
-      "out_of_possession": { "hu": "Söprögető Kapus", "en": "Sweeper Keeper", "pitch_code": "SK" }
+      "in_possession": {
+        "hu": "Ball-Playing Goalkeeper",
+        "en": "Ball-Playing Goalkeeper",
+        "pitch_code": "BGK"
+      },
+      "out_of_possession": {
+        "hu": "Söprögető Kapus",
+        "en": "Sweeper Keeper",
+        "pitch_code": "SK"
+      }
     },
     {
       "slot": "DL",
       "ui_label": "V (B)",
-      "in_possession": { "hu": "Szárnyvédő", "en": "Wing-Back", "pitch_code": "SZV" },
-      "out_of_possession": { "hu": "Holding Full-Back", "en": "Holding Full-Back", "pitch_code": "HFB" }
+      "in_possession": {
+        "hu": "Szárnyvédő",
+        "en": "Wing-Back",
+        "pitch_code": "SZV"
+      },
+      "out_of_possession": {
+        "hu": "Holding Full-Back",
+        "en": "Holding Full-Back",
+        "pitch_code": "HFB"
+      }
     },
     {
       "slot": "DCL",
       "ui_label": "V (K)",
-      "in_possession": { "hu": "Ball-Playing Centre-Back", "en": "Ball-Playing Centre-Back", "pitch_code": "BCB" },
-      "out_of_possession": { "hu": "Stopping Centre-Back", "en": "Stopping Centre-Back", "pitch_code": "SCB" }
+      "in_possession": {
+        "hu": "Ball-Playing Centre-Back",
+        "en": "Ball-Playing Centre-Back",
+        "pitch_code": "BCB"
+      },
+      "out_of_possession": {
+        "hu": "Stopping Centre-Back",
+        "en": "Stopping Centre-Back",
+        "pitch_code": "SCB"
+      }
     },
     {
       "slot": "DCR",
       "ui_label": "V (K)",
-      "in_possession": { "hu": "No-Nonsense Centre-Back", "en": "No-Nonsense Centre-Back", "pitch_code": "NCB" },
-      "out_of_possession": { "hu": "Covering Centre-Back", "en": "Covering Centre-Back", "pitch_code": "CCB" }
+      "in_possession": {
+        "hu": "No-Nonsense Centre-Back",
+        "en": "No-Nonsense Centre-Back",
+        "pitch_code": "NCB"
+      },
+      "out_of_possession": {
+        "hu": "Covering Centre-Back",
+        "en": "Covering Centre-Back",
+        "pitch_code": "CCB"
+      }
     },
     {
       "slot": "DR",
       "ui_label": "V (J)",
-      "in_possession": { "hu": "Szárnyvédő", "en": "Wing-Back", "pitch_code": "SZV" },
-      "out_of_possession": { "hu": "Holding Full-Back", "en": "Holding Full-Back", "pitch_code": "HFB" }
+      "in_possession": {
+        "hu": "Szárnyvédő",
+        "en": "Wing-Back",
+        "pitch_code": "SZV"
+      },
+      "out_of_possession": {
+        "hu": "Holding Full-Back",
+        "en": "Holding Full-Back",
+        "pitch_code": "HFB"
+      }
     },
     {
       "slot": "DM",
       "ui_label": "VKp",
-      "in_possession": { "hu": "Mélységi Irányító", "en": "Deep-Lying Playmaker", "pitch_code": "MI" },
-      "out_of_possession": { "hu": "Screening Defensive Midfielder", "en": "Screening Defensive Midfielder", "pitch_code": "SDM" }
+      "in_possession": {
+        "hu": "Mélységi Irányító",
+        "en": "Deep-Lying Playmaker",
+        "pitch_code": "MI"
+      },
+      "out_of_possession": {
+        "hu": "Screening Defensive Midfielder",
+        "en": "Screening Defensive Midfielder",
+        "pitch_code": "SDM"
+      }
     },
     {
       "slot": "MCL",
       "ui_label": "Kp (K)",
-      "in_possession": { "hu": "Channel Midfielder", "en": "Channel Midfielder", "pitch_code": "CHM" },
-      "out_of_possession": { "hu": "Pressing Central Midfielder", "en": "Pressing Central Midfielder", "pitch_code": "PCM" }
+      "in_possession": {
+        "hu": "Channel Midfielder",
+        "en": "Channel Midfielder",
+        "pitch_code": "CHM"
+      },
+      "out_of_possession": {
+        "hu": "Pressing Central Midfielder",
+        "en": "Pressing Central Midfielder",
+        "pitch_code": "PCM"
+      }
     },
     {
       "slot": "MCR",
       "ui_label": "Kp (K)",
-      "in_possession": { "hu": "Középső Középpályás", "en": "Central Midfielder", "pitch_code": "KK" },
-      "out_of_possession": { "hu": "Screening Central Midfielder", "en": "Screening Central Midfielder", "pitch_code": "SCM" }
+      "in_possession": {
+        "hu": "Középső Középpályás",
+        "en": "Central Midfielder",
+        "pitch_code": "KK"
+      },
+      "out_of_possession": {
+        "hu": "Screening Central Midfielder",
+        "en": "Screening Central Midfielder",
+        "pitch_code": "SCM"
+      }
     },
     {
       "slot": "AML",
       "ui_label": "TKp (B)",
-      "in_possession": { "hu": "Inside Forward", "en": "Inside Forward", "pitch_code": "BT" },
-      "out_of_possession": { "hu": "Tracking Winger", "en": "Tracking Winger", "pitch_code": "TW" }
+      "in_possession": {
+        "hu": "Inside Forward",
+        "en": "Inside Forward",
+        "pitch_code": "BT"
+      },
+      "out_of_possession": {
+        "hu": "Tracking Winger",
+        "en": "Tracking Winger",
+        "pitch_code": "TW"
+      }
     },
     {
       "slot": "AMR",
       "ui_label": "TKp (J)",
-      "in_possession": { "hu": "Inside Forward", "en": "Inside Forward", "pitch_code": "BT" },
-      "out_of_possession": { "hu": "Szélső", "en": "Winger", "pitch_code": "SZ" }
+      "in_possession": {
+        "hu": "Inside Forward",
+        "en": "Inside Forward",
+        "pitch_code": "BT"
+      },
+      "out_of_possession": {
+        "hu": "Szélső",
+        "en": "Winger",
+        "pitch_code": "SZ"
+      }
     },
     {
       "slot": "ST",
       "ui_label": "T (K)",
-      "in_possession": { "hu": "Centre Forward", "en": "Centre Forward", "pitch_code": "CFD" },
-      "out_of_possession": { "hu": "Centre Forward", "en": "Centre Forward", "pitch_code": "CFD" }
+      "in_possession": {
+        "hu": "Centre Forward",
+        "en": "Centre Forward",
+        "pitch_code": "CFD"
+      },
+      "out_of_possession": {
+        "hu": "Centre Forward",
+        "en": "Centre Forward",
+        "pitch_code": "CFD"
+      }
     }
   ],
   "asymmetries": [
@@ -97,51 +186,138 @@
   "team_instructions": {
     "in_possession": {
       "Overview": {
-        "Passing Directness": { "hu": "Egyenletes játék", "en": "Balanced" },
-        "Tempo": { "hu": "Egyenletes játék", "en": "Balanced" },
-        "Attacking Width": { "hu": "Szélesebben", "en": "Wider" },
-        "Attacking Transition": { "hu": "Átlagos", "en": "Standard" },
-        "Creative Freedom": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Time Wasting": { "hu": "Kevésbé gyakran", "en": "Less Often" },
-        "Play for Set Pieces": { "hu": "Tartsátok a labdát játékban", "en": "Keep Ball in Play" }
+        "Passing Directness": {
+          "hu": "Egyenletes játék",
+          "en": "Balanced"
+        },
+        "Tempo": {
+          "hu": "Egyenletes játék",
+          "en": "Balanced"
+        },
+        "Attacking Width": {
+          "hu": "Szélesebben",
+          "en": "Wider"
+        },
+        "Attacking Transition": {
+          "hu": "Átlagos",
+          "en": "Standard"
+        },
+        "Creative Freedom": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Time Wasting": {
+          "hu": "Kevésbé gyakran",
+          "en": "Less Often"
+        },
+        "Play for Set Pieces": {
+          "hu": "Tartsátok a labdát játékban",
+          "en": "Keep Ball in Play"
+        }
       },
       "Final Third": {
-        "Dribbling": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Patience": { "hu": "Keressétek a rést a falon", "en": "Work Ball Into Box" },
-        "Shots from Distance": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Crossing Style": { "hu": "Kiegyensúlyozott", "en": "Balanced" }
+        "Dribbling": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Patience": {
+          "hu": "Keressétek a rést a falon",
+          "en": "Work Ball Into Box"
+        },
+        "Shots from Distance": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Crossing Style": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        }
       },
       "Progression": {
-        "Supporting Runs": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Dribbling": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Progress Through": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Pass Reception": { "hu": "Kiegyensúlyozott", "en": "Balanced" }
+        "Supporting Runs": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Dribbling": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Progress Through": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Pass Reception": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        }
       },
       "Buildup": {
-        "Build-Up Strategy": { "hu": "Play Through Press", "en": "Play Through Press" },
-        "Goal Kicks": { "hu": "Rövid", "en": "Short" },
-        "GK Distribution (Speed)": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "GK Distribution (Target)": { "hu": "Középhátvédek", "en": "Centre-Backs" }
+        "Build-Up Strategy": {
+          "hu": "Play Through Press",
+          "en": "Play Through Press"
+        },
+        "Goal Kicks": {
+          "hu": "Rövid",
+          "en": "Short"
+        },
+        "GK Distribution (Speed)": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "GK Distribution (Target)": {
+          "hu": "Középhátvédek",
+          "en": "Centre-Backs"
+        }
       }
     },
     "out_of_possession": {
       "Overview": {
-        "Line of Engagement": { "hu": "Magas letámadás", "en": "High Press" },
-        "Defensive Line": { "hu": "Egyenletes játék", "en": "Balanced" },
-        "Defensive Line Behaviour": { "hu": "Kiegyensúlyozott", "en": "Balanced" },
-        "Trigger Press": { "hu": "Gyakrabban", "en": "More Often" },
-        "Defensive Transition": { "hu": "Újra összeállni", "en": "Regroup" },
-        "Tackling": { "hu": "Egyenletes játék", "en": "Balanced" }
+        "Line of Engagement": {
+          "hu": "Magas letámadás",
+          "en": "High Press"
+        },
+        "Defensive Line": {
+          "hu": "Egyenletes játék",
+          "en": "Balanced"
+        },
+        "Defensive Line Behaviour": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        },
+        "Trigger Press": {
+          "hu": "Gyakrabban",
+          "en": "More Often"
+        },
+        "Defensive Transition": {
+          "hu": "Újra összeállni",
+          "en": "Regroup"
+        },
+        "Tackling": {
+          "hu": "Egyenletes játék",
+          "en": "Balanced"
+        }
       },
       "High Press": {
-        "Pressing Trap": { "hu": "Befelé csapdáz", "en": "Trap Inside" },
-        "Short Goalkeeper Distribution": { "hu": "Igen", "en": "Yes" }
+        "Pressing Trap": {
+          "hu": "Befelé csapdáz",
+          "en": "Trap Inside"
+        },
+        "Short Goalkeeper Distribution": {
+          "hu": "Igen",
+          "en": "Yes"
+        }
       },
       "Mid Block": {
-        "Pressing Trap": { "hu": "Befelé csapdáz", "en": "Trap Inside" }
+        "Pressing Trap": {
+          "hu": "Befelé csapdáz",
+          "en": "Trap Inside"
+        }
       },
       "Low Block": {
-        "Cross Engagement": { "hu": "Kiegyensúlyozott", "en": "Balanced" }
+        "Cross Engagement": {
+          "hu": "Kiegyensúlyozott",
+          "en": "Balanced"
+        }
       }
     }
   },
