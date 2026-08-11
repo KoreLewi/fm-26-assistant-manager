@@ -63,6 +63,11 @@ into the index, and that no position/phase list contains duplicates.
 
 ## Critical data rules
 
+0. **Every statistic supplied is stored.** Any player, match, season or league data
+   handed over must be written into the database. If no table can hold it, extend the
+   schema (and `scripts/import_json.py`) rather than dropping the data. Values that are
+   truncated or unreadable on the source screen are stored as `NULL`, never guessed.
+
 1. **Never overwrite historical player snapshots.** A new in-game date creates a new snapshot.
 2. **Never resolve a pass-map shirt number by guessing from another match.** For every match, the shirt number shown in that match is linked to the player who actually wore it in that match.
 3. If something is inferred rather than directly visible, mark it as an inference and do not present it as a raw fact.
