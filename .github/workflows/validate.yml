@@ -1,0 +1,21 @@
+name: Validate FM26 database
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Initialize database
+        run: python3 scripts/init_db.py
+      - name: Validate database
+        run: python3 scripts/validate.py
+      - name: Verify query layer
+        run: python3 scripts/query.py "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;"
