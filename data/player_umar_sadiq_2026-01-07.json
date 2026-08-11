@@ -1,0 +1,452 @@
+{
+  "players": [
+    {
+      "id": 25,
+      "name": "Umar Sadiq",
+      "date_of_birth": "1997-02-02",
+      "nationality": "Nigeria",
+      "preferred_foot": "Right (very strong); left fairly strong",
+      "current_team_id": 1,
+      "current_shirt_number": 6,
+      "status": "Folyamatos kezdő",
+      "notes": "15 caps / 1 goal for Nigeria. Goalkeeper rating 2/10."
+    }
+  ],
+  "player_snapshots": [
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "age_years": 28,
+      "team_id": 1,
+      "shirt_number": 6,
+      "position_text": "T (K)",
+      "condition_text": "Csúcsformában",
+      "role_text": "Támadó (Középső)",
+      "value_text": "€24M - €26M",
+      "value_min_eur": 24000000,
+      "value_max_eur": 26000000,
+      "wage_eur_month": 166000,
+      "contract_end": "2028-06-30",
+      "height_cm": 192,
+      "personality_text": "Kiegyensúlyozott",
+      "reputation_text": "Nemzetközi",
+      "current_ability_stars": 3.0,
+      "potential_ability_stars": 3.0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)",
+      "notes": "Disciplinary panel: 5 cards from a 1-match suspension."
+    }
+  ],
+  "player_attributes": [
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Crossing",
+      "value": 6,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Finishing",
+      "value": 12,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Dribbling",
+      "value": 14,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Marking",
+      "value": 6,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Heading",
+      "value": 13,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "First Touch",
+      "value": 11,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Passing",
+      "value": 11,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Tackling",
+      "value": 5,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Long Shots",
+      "value": 13,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Technique",
+      "value": 12,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Penalty Taking",
+      "value": 11,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Long Throws",
+      "value": 7,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Free Kick Taking",
+      "value": 8,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "technical",
+      "attribute_name": "Corners",
+      "value": 6,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Aggression",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Bravery",
+      "value": 12,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Teamwork",
+      "value": 10,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Decisions",
+      "value": 11,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Determination",
+      "value": 14,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Positioning",
+      "value": 5,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Composure",
+      "value": 12,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Concentration",
+      "value": 9,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Off the Ball",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Anticipation",
+      "value": 14,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Vision",
+      "value": 12,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Work Rate",
+      "value": 12,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Instinct",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "mental",
+      "attribute_name": "Leadership",
+      "value": 11,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Stamina",
+      "value": 14,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Balance",
+      "value": 9,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Strength",
+      "value": 14,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Pace",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Acceleration",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Agility",
+      "value": 10,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Natural Fitness",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "attribute_category": "physical",
+      "attribute_name": "Jumping Reach",
+      "value": 16,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    }
+  ],
+  "player_roles": [
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "phase": "IP",
+      "position_text": "T (K)",
+      "role_text": "Centre Forward",
+      "rating_stars": 3.0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "phase": "IP",
+      "position_text": "T (K)",
+      "role_text": "Target Forward",
+      "rating_stars": 3.0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "phase": "IP",
+      "position_text": "T (K)",
+      "role_text": "Channel Forward",
+      "rating_stars": 3.0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "phase": "IP",
+      "position_text": "T (K)",
+      "role_text": "Poacher",
+      "rating_stars": 3.0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "phase": "IP",
+      "position_text": "T (K)",
+      "role_text": "Deep-Lying Forward",
+      "rating_stars": 3.0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    }
+  ],
+  "player_traits": [
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "trait_text": "Üresbe mozog",
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "trait_text": "Felhúzza ellenfeleit",
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "trait_text": "Kényszerítőzik",
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "trait_text": "Kapáslövésekkel próbálkozik",
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    }
+  ],
+  "player_season_stats": [
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "season": "2025/26",
+      "competition_scope": "First Division",
+      "matches": 4,
+      "starts": null,
+      "sub_apps": null,
+      "goals": 3,
+      "assists": 1,
+      "xg": 1.4,
+      "avg_rating": null,
+      "yellow_cards": 0,
+      "red_cards": 0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "season": "2025/26",
+      "competition_scope": "Spanish Cup",
+      "matches": 2,
+      "starts": null,
+      "sub_apps": null,
+      "goals": 2,
+      "assists": 0,
+      "xg": 0.6,
+      "avg_rating": null,
+      "yellow_cards": 0,
+      "red_cards": 0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq)"
+    },
+    {
+      "player_id": 25,
+      "game_date": "2026-01-07",
+      "season": "2025/26",
+      "competition_scope": "all",
+      "matches": 6,
+      "starts": null,
+      "sub_apps": null,
+      "goals": 5,
+      "assists": 1,
+      "xg": 2.0,
+      "avg_rating": 6.84,
+      "yellow_cards": 0,
+      "red_cards": 0,
+      "source": "screenshot: Áttekintés > Játékos jelentés (Umar Sadiq) (avg_rating from the Forma panel; match counts showed truncated sub apps)"
+    }
+  ]
+}
