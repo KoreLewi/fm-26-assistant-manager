@@ -5,44 +5,8 @@
     "notes": "Date inferred from the supplied squad screenshots; Filip Ugrinic is shown as age 26 with DOB 5/1/1999."
   },
   "teams": [],
-  "players": [
-    {
-      "id": 21,
-      "name": "Filip Ugrinic",
-      "date_of_birth": "1999-01-05",
-      "nationality": "Switzerland",
-      "preferred_foot": "Right",
-      "current_team_id": null,
-      "current_shirt_number": 24,
-      "status": "Érd",
-      "notes": "Valencia squad player; club shown in screenshot."
-    }
-  ],
-  "player_snapshots": [
-    {
-      "id": 21,
-      "player_id": 21,
-      "game_date": "2025-12-22",
-      "age_years": 26,
-      "team_id": null,
-      "shirt_number": 24,
-      "position_text": "Középpályás/Támadó középpályás (Középső)",
-      "condition_text": "Csúcsformában",
-      "role_text": "Advanced Playmaker",
-      "value_text": "€15M",
-      "value_min_eur": 15000000,
-      "value_max_eur": 15000000,
-      "wage_eur_month": 142,
-      "contract_end": "2029-06-30",
-      "height_cm": 184,
-      "personality_text": "Meglehetősen profi",
-      "reputation_text": "Nemzetközi",
-      "current_ability_stars": 3.0,
-      "potential_ability_stars": 3.0,
-      "source": "screenshot: Filip Ugrinic player report",
-      "notes": "Valencia shown as club. Team foreign key intentionally left null because the existing Valencia team ID was not re-read."
-    }
-  ],
+  "players": [{"id":21,"name":"Filip Ugrinic","date_of_birth":"1999-01-05","nationality":"Switzerland","preferred_foot":"Right","current_team_id":null,"current_shirt_number":24,"status":"Érd","notes":"Valencia squad player; club shown in screenshot."}],
+  "player_snapshots": [{"id":21,"player_id":21,"game_date":"2025-12-22","age_years":26,"team_id":null,"shirt_number":24,"position_text":"Középpályás/Támadó középpályás (Középső)","condition_text":"Csúcsformában","role_text":"Advanced Playmaker","value_text":"€15M","value_min_eur":15000000,"value_max_eur":15000000,"wage_eur_month":142,"contract_end":"2029-06-30","height_cm":184,"personality_text":"Meglehetősen profi","reputation_text":"Nemzetközi","current_ability_stars":3.0,"potential_ability_stars":3.0,"source":"screenshot: Filip Ugrinic player report","notes":"Valencia shown as club. Team foreign key intentionally left null because the existing Valencia team ID was not re-read."}],
   "player_attributes": [
     {"id":1,"player_id":21,"game_date":"2025-12-22","attribute_category":"Technical","attribute_name":"Crossing","value":12,"source":"screenshot: Filip Ugrinic player report"},
     {"id":2,"player_id":21,"game_date":"2025-12-22","attribute_category":"Technical","attribute_name":"Finishing","value":8,"source":"screenshot: Filip Ugrinic player report"},
@@ -74,7 +38,8 @@
     {"id":28,"player_id":21,"game_date":"2025-12-22","attribute_category":"Physical","attribute_name":"Acceleration","value":12,"source":"screenshot: Filip Ugrinic player report"},
     {"id":29,"player_id":21,"game_date":"2025-12-22","attribute_category":"Physical","attribute_name":"Agility","value":12,"source":"screenshot: Filip Ugrinic player report"},
     {"id":30,"player_id":21,"game_date":"2025-12-22","attribute_category":"Physical","attribute_name":"Natural Fitness","value":14,"source":"screenshot: Filip Ugrinic player report"},
-    {"id":31,"player_id":21,"game_date":"2025-12-22","attribute_category":"Physical","attribute_name":"Jumping Reach","value":12,"source":"screenshot: Filip Ugrinic player report"}
+    {"id":31,"player_id":21,"game_date":"2025-12-22","attribute_category":"Physical","attribute_name":"Jumping Reach","value":12,"source":"screenshot: Filip Ugrinic player report"},
+    {"id":32,"player_id":21,"game_date":"2025-12-22","attribute_category":"Mental","attribute_name":"Off the Ball","value":1,"source":"screenshot: Filip Ugrinic player report"}
   ],
   "player_roles": [
     {"id":1,"player_id":21,"game_date":"2025-12-22","phase":"IP","position_text":"Kp/Tkp (K)","role_text":"Advanced Playmaker","rating_stars":3.0,"source":"screenshot: Filip Ugrinic player report"},
