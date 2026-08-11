@@ -5,6 +5,7 @@
     "captured_real_date": "2026-08-11",
     "formation_context": "4-3-3 with a single DM (Mestral). Role lists are formation-dependent: back-three roles (Overlapping / Wide Centre-Back, Covering / Stopping Wide Centre-Back) are not offered in a back four.",
     "note": "Many FM26 roles are displayed in English even on the Hungarian UI. Where the game shows an English string it is recorded identically in hu and en, and marked untranslated.",
+    "duplicate_slot_labels": "The role-editor dropdown shows TWO separate entries labelled 'V (K)' (left and right centre-back) and TWO labelled 'Kp (K)' (left and right central midfielder). They are independent slots and can hold different roles even though every role in this save is applied on the 'Pozíció' tab and no player has a 'Személyre szabott' (individual) role. Slot identity must be read from the pitch view, not from the dropdown label.",
     "rule": "These are SOURCE FACTS from screenshots. Where a list disagrees with allowed_roles_index in the v4 reference, the disagreement is recorded in _discrepancies_vs_v4 and is NOT silently resolved."
   },
   "position_codes": {
@@ -106,16 +107,25 @@
         ]
       },
       "out_of_possession": {
-        "capture_complete": false,
-        "capture_note": "Not yet captured for V (B). V (J) list recorded below is expected to be identical but is not assumed.",
-        "roles": []
+        "capture_complete": true,
+        "roles": [
+          { "hu": "Szélsőhátvéd", "en": "Full-Back", "untranslated": false },
+          { "hu": "Pressing Full-Back", "en": "Pressing Full-Back", "untranslated": true },
+          { "hu": "Holding Full-Back", "en": "Holding Full-Back", "untranslated": true }
+        ]
       }
     },
     "V (J)": {
       "in_possession": {
         "capture_complete": false,
-        "capture_note": "Not yet captured.",
-        "roles": []
+        "capture_note": "List was scrolled; Playmaking Wing-Back was the last partially visible entry. Identical to V (B) as far as captured.",
+        "roles": [
+          { "hu": "Szélsőhátvéd", "en": "Full-Back", "untranslated": false },
+          { "hu": "Szárnyvédő", "en": "Wing-Back", "untranslated": false },
+          { "hu": "Inside Wing-Back", "en": "Inside Wing-Back", "untranslated": true },
+          { "hu": "Inside Full-Back", "en": "Inside Full-Back", "untranslated": true },
+          { "hu": "Playmaking Wing-Back", "en": "Playmaking Wing-Back", "untranslated": true }
+        ]
       },
       "out_of_possession": {
         "capture_complete": true,
@@ -180,16 +190,26 @@
         ]
       },
       "out_of_possession": {
-        "capture_complete": false,
-        "capture_note": "Not yet captured for TKp (J).",
-        "roles": []
+        "capture_complete": true,
+        "roles": [
+          { "hu": "Szélső", "en": "Winger", "untranslated": false },
+          { "hu": "Tracking Winger", "en": "Tracking Winger", "untranslated": true },
+          { "hu": "Inside Outlet Winger", "en": "Inside Outlet Winger", "untranslated": true },
+          { "hu": "Wide Outlet Winger", "en": "Wide Outlet Winger", "untranslated": true }
+        ]
       }
     },
     "TKp (B)": {
       "in_possession": {
         "capture_complete": false,
-        "capture_note": "Not yet captured for TKp (B).",
-        "roles": []
+        "capture_note": "List was scrolled; Inside Winger was the last partially visible entry. Identical to TKp (J) as far as captured.",
+        "roles": [
+          { "hu": "Szélső", "en": "Winger", "untranslated": false },
+          { "hu": "Inside Forward", "en": "Inside Forward", "untranslated": true },
+          { "hu": "Playmaking Winger", "en": "Playmaking Winger", "untranslated": true },
+          { "hu": "Wide Forward", "en": "Wide Forward", "untranslated": true },
+          { "hu": "Inside Winger", "en": "Inside Winger", "untranslated": true }
+        ]
       },
       "out_of_possession": {
         "capture_complete": true,
@@ -259,8 +279,89 @@
     "Kreatív fegyver": "Creative outlet",
     "Pozíció elhagyás": "Leaves position"
   },
+  "team_instruction_labels": {
+    "_note": "Observed on the Csapatutasítás screen. Group headers on the Hungarian UI are partly untranslated (Progression, Buildup).",
+    "in_possession": {
+      "group_headers": {
+        "Áttekintés": "Overview",
+        "Támadó harmad": "Final Third",
+        "Progression": "Progression",
+        "Buildup": "Buildup"
+      },
+      "instructions": {
+        "Passz korlátozás": "Passing Directness",
+        "Tempó": "Tempo",
+        "Támadás szélessége": "Attacking Width",
+        "Átmenet támadásba": "Attacking Transition",
+        "Kreatív szabadság": "Creative Freedom",
+        "Időhúzás": "Time Wasting",
+        "Rögzített helyzetekre építés": "Play for Set Pieces",
+        "Cselezés": "Dribbling",
+        "Türelem": "Patience",
+        "Shots from Distance": "Shots from Distance",
+        "Beadás módja": "Crossing Style",
+        "Támogató felfutások": "Supporting Runs",
+        "Előretörés": "Progress Through",
+        "Passz felvétel": "Pass Reception",
+        "Build-Up Strategy": "Build-Up Strategy",
+        "Kapuskirúgások": "Goal Kicks",
+        "Kapus kiadás": "GK Distribution"
+      },
+      "option_values": {
+        "Egyenletes játék": "Balanced",
+        "Kiegyensúlyozott": "Balanced",
+        "Átlagos": "Standard",
+        "Szélesebben": "Wider",
+        "Kevésbé gyakran": "Less Often",
+        "Tartsátok a labdát játékban": "Keep Ball in Play",
+        "Keressétek a rést a falon": "Work Ball Into Box",
+        "Play Through Press": "Play Through Press",
+        "Rövid": "Short",
+        "Középhátvédek": "Centre-Backs"
+      }
+    },
+    "out_of_possession": {
+      "group_headers": {
+        "Áttekintés": "Overview",
+        "Mag. letám.": "High Press",
+        "Köz. blokk": "Mid Block",
+        "Al. blokk": "Low Block"
+      },
+      "instructions": {
+        "Ütközésivonal": "Line of Engagement",
+        "Védelmi vonal": "Defensive Line",
+        "Védelmi vonal hozzáállása": "Defensive Line Behaviour",
+        "Letámadás intenzitása": "Trigger Press",
+        "Védekező átmenet": "Defensive Transition",
+        "Szerelés": "Tackling",
+        "Presszing csapda": "Pressing Trap",
+        "Rövid kapuskiadás": "Short Goalkeeper Distribution",
+        "Keresztlabdák kezelése": "Cross Engagement"
+      },
+      "option_values": {
+        "Magas letámadás": "High Press",
+        "Egyenletes játék": "Balanced",
+        "Kiegyensúlyozott": "Balanced",
+        "Gyakrabban": "More Often",
+        "Újra összeállni": "Regroup",
+        "Befelé csapdáz": "Trap Inside",
+        "Igen": "Yes"
+      }
+    },
+    "style_and_mentality": {
+      "Mezőnyfölény": "Control Possession",
+      "Pozitív": "Positive",
+      "Jártasság": "Familiarity",
+      "Intenzitás": "Intensity"
+    }
+  },
   "_discrepancies_vs_v4": {
     "_note": "Recorded, not resolved. The in-game lists are source facts; data/fm26_ai_system_prompt_v4.json is the reference document. Resolve deliberately, then re-run scripts/validate_roles.py.",
+    "team_instruction_differences": [
+      "Pressing Trap: v4 lists options ['Balanced', 'Active']. The game shows a DIRECTIONAL value - 'Befelé csapdáz' (Trap Inside) - implying the real option set is directional (inside / outside) rather than balanced/active.",
+      "Time Wasting: v4 lists ['Less Often', 'Standard', 'More Often']. The game shows 'Kevésbé gyakran' (Less Often), consistent.",
+      "GK Distribution appears twice in the Buildup group ('Kapus kiadás' = speed, and 'Kapus kiadás' = target), matching v4's split into (Speed) and (Target)."
+    ],
     "base_role_missing_from_v4_oop": [
       "GK out_of_possession: game offers 'Goalkeeper' (Kapus) as a third option; v4 lists only Sweeper Keeper and Line-Holding Goalkeeper.",
       "DM out_of_possession: game offers 'Defensive Midfielder' (Védekező Középpályás); v4 does not.",
