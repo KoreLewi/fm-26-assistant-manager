@@ -15,6 +15,10 @@ jobs:
           python-version: '3.x'
       - name: Initialize database
         run: python3 scripts/init_db.py
+      - name: Import initial snapshot
+        run: python3 scripts/import_initial_snapshot.py
+      - name: Verify initial dataset
+        run: python3 scripts/verify_db.py
       - name: Validate database
         run: python3 scripts/validate.py
       - name: Verify query layer
