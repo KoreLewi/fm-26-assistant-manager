@@ -1,0 +1,20 @@
+{
+  "game_state": {
+    "current_game_date": "2025-08-01",
+    "season": "2025/26",
+    "notes": "Only replace this with a date actually visible/confirmed in the save."
+  },
+  "teams": [],
+  "players": [],
+  "player_snapshots": [],
+  "player_attributes": [],
+  "competitions": [],
+  "matches": [],
+  "match_players": [],
+  "pass_map_nodes": [],
+  "pass_map_links": [],
+  "match_team_stats": [],
+  "tactical_observations": [],
+  "player_evaluations": [],
+  "scout_reports": []
+}
