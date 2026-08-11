@@ -50,6 +50,12 @@ TABLES = {
                               "observation", "confidence", "source"],
     "player_evaluations": ["id", "player_id", "evaluation_game_date",
                            "category", "observation", "confidence", "source"],
+    "player_season_stats": ["id", "player_id", "game_date", "season",
+                            "competition_scope", "starts", "sub_apps", "goals",
+                            "assists", "avg_rating", "source"],
+    "league_standings": ["id", "game_date", "competition_id", "season", "position",
+                         "team_name", "played", "won", "drawn", "lost", "goals_for",
+                         "goals_against", "goal_difference", "points", "source"],
     "scout_reports": ["id", "player_id", "scout_game_date", "scout_name",
                       "scouting_context", "current_age", "current_team_id",
                       "current_position", "current_value_text", "recommendation",
@@ -92,7 +98,7 @@ def main() -> None:
             "player_snapshots", "player_attributes", "player_roles", "player_traits",
             "matches", "match_players", "pass_map_nodes", "pass_map_links",
             "match_team_stats", "tactical_observations", "player_evaluations",
-            "scout_reports",
+            "player_season_stats", "league_standings", "scout_reports",
         ]
         for table in order:
             insert_rows(conn, table, payload.get(table, []))
