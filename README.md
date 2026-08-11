@@ -39,6 +39,28 @@ The 2025-12-22 game date is inferred from the screenshots: the displayed ages al
 - `player_evaluations`: longer-term assessments of a player.
 - `scout_reports`: scouted players, including players who never belonged to Valencia.
 
+## FM26 tactical reference
+
+`data/fm26_ai_system_prompt_v4.json` is the canonical definition of the FM26
+phase-based system: the legal In Possession and Out of Possession role list for every
+position code, the banned legacy role names, all preset tactical styles, and every team
+instruction with every option.
+
+It is the reference any tactical recommendation must be validated against. FM26 has no
+Defend/Support/Attack duties - each outfield player receives exactly one IP role and one
+OOP role, and a role is legal for a slot only if its exact string appears under that
+position code and phase in `allowed_roles_index`.
+
+Validate the reference for internal consistency:
+
+```bash
+python3 scripts/validate_roles.py
+```
+
+The check enforces that the descriptive `positions` blocks and the flat
+`allowed_roles_index` agree character-for-character, that no banned legacy name leaks
+into the index, and that no position/phase list contains duplicates.
+
 ## Critical data rules
 
 1. **Never overwrite historical player snapshots.** A new in-game date creates a new snapshot.
