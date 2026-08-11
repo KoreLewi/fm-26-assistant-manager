@@ -230,3 +230,42 @@ CREATE INDEX IF NOT EXISTS idx_pass_nodes_match ON pass_map_nodes(match_id);
 CREATE INDEX IF NOT EXISTS idx_pass_links_match ON pass_map_links(match_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_player_date ON player_evaluations(player_id, evaluation_game_date);
 CREATE INDEX IF NOT EXISTS idx_scout_reports_player_date ON scout_reports(player_id, scout_game_date);
+
+CREATE TABLE IF NOT EXISTS player_season_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    game_date TEXT NOT NULL,
+    season TEXT,
+    competition_scope TEXT NOT NULL DEFAULT 'all',
+    starts INTEGER,
+    sub_apps INTEGER,
+    goals INTEGER,
+    assists INTEGER,
+    avg_rating REAL,
+    source TEXT,
+    FOREIGN KEY(player_id) REFERENCES players(id),
+    UNIQUE(player_id, game_date, competition_scope)
+);
+
+CREATE TABLE IF NOT EXISTS league_standings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_date TEXT NOT NULL,
+    competition_id INTEGER,
+    season TEXT,
+    position INTEGER NOT NULL,
+    team_name TEXT NOT NULL,
+    played INTEGER,
+    won INTEGER,
+    drawn INTEGER,
+    lost INTEGER,
+    goals_for INTEGER,
+    goals_against INTEGER,
+    goal_difference INTEGER,
+    points INTEGER,
+    source TEXT,
+    FOREIGN KEY(competition_id) REFERENCES competitions(id),
+    UNIQUE(game_date, competition_id, team_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_season_stats_player ON player_season_stats(player_id, game_date);
+CREATE INDEX IF NOT EXISTS idx_standings_date ON league_standings(game_date, position);
