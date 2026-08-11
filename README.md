@@ -8,13 +8,28 @@ Persistent data layer for an FM26 save. The database is designed to preserve his
 
 Raw facts are kept separately from interpretations. Historical records are not overwritten.
 
+## Current initial dataset
+
+The repository now contains the first structured squad snapshot reconstructed from the 20 player screenshots supplied in the conversation.
+
+- In-game date: **2025-12-22**
+- Season: **2025/26**
+- Players: **20**
+- Attribute values: **714**
+- Player-role records: **92**
+- Primary club: **Valencia**
+
+The 2025-12-22 game date is inferred from the screenshots: the displayed ages align with that date, and the Sergio Ramos screenshot shows 190 days remaining to 30/6/2026. If a later screenshot gives a more explicit in-game date, that date should replace the inference.
+
 ## What is stored
 
-- `game_state`: the current in-game date and season. This is separate from the real-world date.
+- `game_state`: current in-game date and season. This is separate from the real-world date.
 - `teams`: clubs encountered in the save, including non-Valencia clubs.
-- `players`: stable player identity (name, DOB, nationality, foot, etc.).
-- `player_snapshots`: age, club, shirt number, position, value and other time-dependent player state.
-- `player_attributes`: 1–20 FM attributes at a specific in-game date.
+- `players`: stable player identity (name, DOB, nationality, etc.).
+- `player_snapshots`: age, club, position, value, wage, contract, height, personality, CA/PA stars and other time-dependent state.
+- `player_attributes`: individual FM attributes at a specific in-game date.
+- `player_roles`: role suitability shown on the player screen, kept as raw screenshot facts.
+- `player_traits`: player traits when they are explicitly captured.
 - `matches`: every match we explicitly record.
 - `match_players`: per-match minutes, rating, distance, xG, xA, goals, assists and other visible statistics.
 - `pass_map_nodes`: actual shirt-number-to-player mapping plus average map position.
@@ -24,20 +39,33 @@ Raw facts are kept separately from interpretations. Historical records are not o
 - `player_evaluations`: longer-term assessments of a player.
 - `scout_reports`: scouted players, including players who never belonged to Valencia.
 
-## Critical data rule
+## Critical data rules
 
-Never resolve a pass-map shirt number by guessing from another match. For every match, the shirt number shown in that match is linked to the player who actually wore it in that match.
-
-If something is inferred rather than directly visible, it must be marked with a non-confirmed confidence value and should not be presented as a fact.
+1. **Never overwrite historical player snapshots.** A new in-game date creates a new snapshot.
+2. **Never resolve a pass-map shirt number by guessing from another match.** For every match, the shirt number shown in that match is linked to the player who actually wore it in that match.
+3. If something is inferred rather than directly visible, mark it as an inference and do not present it as a raw fact.
+4. Role labels from screenshots are stored as source facts. Tactical recommendations must separately validate the legal FM26 IP/OOP role system.
 
 ## SQLite
 
-The repository stores the **schema and import/query tools**, not a binary SQLite database. The local `fm26.sqlite3` file is generated from `db/schema.sql` and is ignored by Git.
+The repository stores the **schema, structured source data and import/query tools**. The binary `fm26.sqlite3` file is generated locally and ignored by Git.
 
 Initialize:
 
 ```bash
 python3 scripts/init_db.py
+```
+
+Import the initial dataset:
+
+```bash
+python3 scripts/import_json.py data/initial_valencia_snapshot_2025-12-22.json
+```
+
+Verify:
+
+```bash
+python3 scripts/verify_db.py
 ```
 
 Run a SQL query:
@@ -46,18 +74,12 @@ Run a SQL query:
 python3 scripts/query.py "SELECT * FROM players;"
 ```
 
-Import structured JSON:
-
-```bash
-python3 scripts/import_json.py data/import_template.json
-```
-
-The JSON importer is deliberately explicit. It is intended for data extracted from screenshots by the assistant and then reviewed before insertion.
+Example queries are in `db/example_queries.sql`.
 
 ## Data workflow
 
 1. Establish the save's current in-game date.
-2. Load the initial player screenshots as historical player/attribute snapshots.
+2. Load player screenshots as historical player/attribute snapshots.
 3. Load matches and player match statistics.
 4. Load pass-map nodes and links using the exact shirt numbers visible on that match's pass map.
 5. Add tactical observations separately from raw statistics.
@@ -66,9 +88,9 @@ The JSON importer is deliberately explicit. It is intended for data extracted fr
 
 This lets us answer questions such as:
 
-- What was a player's attribute profile at the start of the season?
-- How did it change by December?
-- What was Gaya's actual attacking/pass-map profile across matches?
-- Which players in the scouting database resemble that role and profile?
+- What was a player's attribute profile on a specific in-game date?
+- How did an attribute change between two dates?
+- What was Gayà's actual attacking/pass-map profile across matches?
+- Which scouted players resemble a role/profile?
 - Which players consistently performed well rather than only in one match?
 - What tactical structure produced the observed passing relationships?
