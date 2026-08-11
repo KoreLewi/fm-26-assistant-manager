@@ -354,21 +354,5 @@
         "ST": "Hugo Duro"
       }
     }
-  ],
-  "team_report": {
-    "competition": "First Division",
-    "overall_performance_hu": "Jó",
-    "verdict_hu": "Az átlagnál jobban teljesít",
-    "season_metrics": {
-      "pass_pct": 89.0,
-      "possession_pct": 75.7,
-      "goals_per_match": 1.8,
-      "conceded_xg_per_match": 1.4,
-      "chances_per_match": 1.4,
-      "conceded_goals_per_match": 1.5,
-      "shots_per_match": 14.8,
-      "shot_accuracy_pct": 47.3
-    },
-    "metrics_note": "Read from the Adatközpont radar; axis labels were truncated on screen, so the mapping of the 1.4 / 1.4 pair (Bn-xG and Kpt/M) is an inference and should be re-checked before being used in analysis."
-  }
+  ]
 }
