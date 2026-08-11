@@ -74,7 +74,7 @@ Run a SQL query:
 python3 scripts/query.py "SELECT * FROM players;"
 ```
 
-Example queries are in `db/example_queries.sql`.
+Example queries are in `db/common_queries.sql`.
 
 The initial source dataset is stored as a gzip-compressed, base64-encoded JSON file so the complete 714-attribute dataset can live in Git without an enormous formatted JSON blob. The helper decodes it transparently before import.
 
