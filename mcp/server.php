@@ -139,8 +139,10 @@ function fm_auth_ok(string $token): bool
 function fm_send_unauthorized(): void
 {
     http_response_code(401);
+    // resource_metadata comes first: it is the parameter RFC 9728 defines and the one
+    // the client has to read to find the authorization server.
     header(sprintf(
-        'WWW-Authenticate: Bearer realm="fm26", resource_metadata="%s"',
+        'WWW-Authenticate: Bearer resource_metadata="%s", scope="mcp", realm="fm26"',
         fm_oauth_resource_metadata_url()
     ));
     header('Content-Type: application/json; charset=utf-8');
