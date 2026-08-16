@@ -18,6 +18,10 @@ env
 mcp/config.php
 mcp/config.local.php
 
+# Written on the host by import_json; fetched with bootstrap.php?pull=1 and committed
+# deliberately into the save directory it belongs to.
+data/saves/*/incoming/
+
 # Editor / OS
 .idea/
 .vscode/

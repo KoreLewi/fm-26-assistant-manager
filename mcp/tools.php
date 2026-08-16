@@ -135,6 +135,37 @@ function fm_reference_get(?string $document, ?string $section, ?string $search):
     }
 }
 
+/**
+ * Write an import payload into the active save directory.
+ *
+ * The database is generated from the committed files, so anything written only to the
+ * database is lost the next time it is rebuilt. Keeping a copy alongside the sources
+ * keeps that promise true for data that arrives through the connector.
+ *
+ * @return string the path written, relative to the repository root
+ */
+function fm_persist_import(array $payload): string
+{
+    $directory = fm_save_dir() . '/incoming';
+    if (!is_dir($directory) && !mkdir($directory, 0750, true) && !is_dir($directory)) {
+        throw new FmMcpError("Cannot create the import directory {$directory}.");
+    }
+
+    $stamp = gmdate('Ymd-His');
+    $sequence = 1;
+    do {
+        $path = sprintf('%s/%s-%02d.json', $directory, $stamp, $sequence);
+        $sequence++;
+    } while (file_exists($path) && $sequence < 100);
+
+    $encoded = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if (file_put_contents($path, $encoded . "\n", LOCK_EX) === false) {
+        throw new FmMcpError("Cannot write the import copy to {$path}.");
+    }
+
+    return ltrim(str_replace(fm_config()['repo_root'], '', $path), '/');
+}
+
 function fm_tool_definitions(): array
 {
     $importTables = fm_import_tables();
@@ -352,6 +383,7 @@ function fm_call_tool(string $name, array $arguments): array
                 throw new FmMcpError('The "payload" argument is required and must be an object.', -32602);
             }
             $written = fm_import_transactional($payload);
+            $persistedAs = fm_persist_import($payload);
             $total = 0;
             foreach ($written as $key => $value) {
                 if (is_int($value)) {
@@ -362,6 +394,7 @@ function fm_call_tool(string $name, array $arguments): array
             return fm_tool_result([
                 'rows_written' => $written,
                 'total_rows_written' => $total,
+                'persisted_as' => $persistedAs,
                 'state' => fm_save_state(),
             ]);
 

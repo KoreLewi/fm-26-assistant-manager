@@ -379,6 +379,22 @@ function fm_handle_http(): void
     fm_send_json($isBatch ? $responses : $responses[0]);
 }
 
+/** Remove a directory tree. Used to clean up after the selftest. */
+function fm_remove_tree(string $directory): void
+{
+    if (!is_dir($directory)) {
+        return;
+    }
+    $entries = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($entries as $entry) {
+        $entry->isDir() ? @rmdir($entry->getPathname()) : @unlink($entry->getPathname());
+    }
+    @rmdir($directory);
+}
+
 /* ------------------------------------------------------------------ selftest */
 
 function fm_selftest(): int
@@ -397,6 +413,15 @@ function fm_selftest(): int
 
         return 1;
     }
+    // A repository root of its own: the tools write into a save directory, and the
+    // selftest must never touch the working copy.
+    mkdir($dir . '/data/saves/selftest/incoming', 0700, true);
+    mkdir($dir . '/data/reference', 0700, true);
+    mkdir($dir . '/db', 0700, true);
+    copy(dirname(__DIR__) . '/db/schema.sql', $dir . '/db/schema.sql');
+    foreach (glob(dirname(__DIR__) . '/data/reference/*.json') ?: [] as $referenceFile) {
+        copy($referenceFile, $dir . '/data/reference/' . basename($referenceFile));
+    }
     $dbPath = $dir . '/fm26.sqlite3';
     $secret = bin2hex(random_bytes(32));
 
@@ -408,14 +433,15 @@ function fm_selftest(): int
         'secret' => $secret,
         'max_rows' => 3,
         'log_file' => null,
-        'repo_root' => dirname(__DIR__),
+        'repo_root' => $dir,
+        'active_save' => 'selftest',
     ]);
 
     try {
         // A minimal database rather than the committed data set, so the selftest
         // stays valid however the repository content changes.
         $pdo = fm_sqlite_pdo($dbPath);
-        $schema = dirname(__DIR__) . '/db/schema.sql';
+        $schema = $dir . '/db/schema.sql';
         if (!is_file($schema)) {
             fwrite(STDERR, "db/schema.sql not found next to mcp/\n");
 
@@ -635,6 +661,27 @@ function fm_selftest(): int
                 && !fm_auth_ok(str_repeat('a', 64))
         );
 
+        // 12b. an import is also written into the save directory
+        $incomingDir = fm_save_dir() . '/incoming';
+        $before = count(glob($incomingDir . '/*.json') ?: []);
+        $persistCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 23,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'import_json',
+                'arguments' => ['payload' => ['teams' => [['id' => 2, 'name' => 'Persisted FC']]]],
+            ],
+        ]);
+        $persistResult = json_decode($persistCall['result']['content'][0]['text'] ?? '{}', true);
+        $after = glob($incomingDir . '/*.json') ?: [];
+        $persisted = count($after) === $before + 1 && !empty($persistResult['persisted_as']);
+        if ($persisted) {
+            $writtenPayload = json_decode((string) file_get_contents(end($after)), true);
+            $persisted = ($writtenPayload['teams'][0]['name'] ?? '') === 'Persisted FC';
+        }
+        $check('an import is also written to the save directory', $persisted);
+
         // 13. the reference catalogue and a drill-down into the role index
         fm_reference_import(fm_pdo_rw());
 
@@ -782,10 +829,7 @@ function fm_selftest(): int
         $unknown = fm_handle_message(['jsonrpc' => '2.0', 'id' => 14, 'method' => 'no/such/method']);
         $check('an unknown method returns JSON-RPC -32601', ($unknown['error']['code'] ?? 0) === -32601);
     } finally {
-        foreach (glob($dir . '/*') ?: [] as $file) {
-            @unlink($file);
-        }
-        @rmdir($dir);
+        fm_remove_tree($dir);
     }
 
     echo "\n", $failures === 0

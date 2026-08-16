@@ -541,6 +541,23 @@ if (($_GET['logs'] ?? '') !== '') {
     exit;
 }
 
+// The files written by import_json since the last commit. The sync only runs from the
+// working copy to the host, so they have to be fetched back deliberately.
+if (($_GET['pull'] ?? '') === '1') {
+    header('Content-Type: application/json; charset=utf-8');
+    $files = glob(fm_save_dir() . '/incoming/*.json') ?: [];
+    sort($files);
+    $bundle = ['save' => fm_active_save(), 'file_count' => count($files), 'files' => []];
+    foreach ($files as $file) {
+        $bundle['files'][] = [
+            'name' => basename($file),
+            'payload' => json_decode((string) file_get_contents($file), true),
+        ];
+    }
+    echo json_encode($bundle, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), "\n";
+    exit;
+}
+
 // The request trail, for working out where a client's handshake stops.
 if (isset($_GET['trace'])) {
     $file = fm_trace_file();
@@ -566,6 +583,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || ($_GET['confirm'] ?? '')
     http_response_code(400);
     echo "POST with &confirm=rebuild to build the database. Add &force=1 to replace an existing one.\n";
     echo "GET with &info=1 to see the host report.\n";
+    echo "GET with &pull=1 to fetch what import_json wrote since the last commit.\n";
     exit;
 }
 
