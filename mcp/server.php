@@ -232,15 +232,30 @@ function fm_handle_message(array $message): ?array
                         'version' => FM_MCP_SERVER_VERSION,
                     ],
                     'instructions' =>
-                        'Football Manager 2026 save database. Call save_state first to learn the current '
-                        . 'in-game date, reference before recommending any role or instruction, '
-                        . 'list_tables when column names are uncertain, query for every read, and '
-                        . 'import_json to record new data. Never answer from memory: this database is '
-                        . 'the only source of truth for the save. FM26 has no Defend/Support/Attack '
-                        . 'duties - each outfield player has one In Possession and one Out of Possession '
-                        . 'role, and a role is legal for a slot only if it appears under that position '
-                        . 'code and phase in the reference. Attribute numbers beat star ratings. Player '
-                        . 'state is dated: a new in-game date is a new row, never an edit to an old one.',
+                        'Football Manager 2026 save database, and the assistant manager\'s memory '
+                        . 'of the work. This connector keeps no state between conversations: this '
+                        . 'chat starts blank, and nothing said in it reaches the next one unless it '
+                        . 'is written here.'
+                        . "\n\n"
+                        . 'Start with save_state. It carries a briefing - what was last worked on, '
+                        . 'what comes next, and which questions are still open - along with the '
+                        . 'current in-game date and season. Read it before answering anything '
+                        . 'time-dependent, and continue from where it says the work stopped.'
+                        . "\n\n"
+                        . 'Finish every substantive step with session_note: data recorded, a '
+                        . 'conclusion reached, a decision taken, a question left open. A step that '
+                        . 'is not written down did not happen as far as tomorrow is concerned.'
+                        . "\n\n"
+                        . 'Use reference before recommending any role or instruction, list_tables '
+                        . 'when column names are uncertain, query for every read, and import_json '
+                        . 'to record new data. Never answer from memory: this database is the only '
+                        . 'source of truth for the save.'
+                        . "\n\n"
+                        . 'FM26 has no Defend/Support/Attack duties - each outfield player has one '
+                        . 'In Possession and one Out of Possession role, and a role is legal for a '
+                        . 'slot only if it appears under that position code and phase in the '
+                        . 'reference. Attribute numbers beat star ratings. Player state is dated: a '
+                        . 'new in-game date is a new row, never an edit to an old one.',
                 ];
 
                 return $isNotification ? null : fm_rpc_result($id, $result);
@@ -495,7 +510,8 @@ function fm_selftest(): int
         }
         $check(
             'tools/list returns every tool with a schema',
-            $names === ['import_json', 'list_tables', 'query', 'reference', 'save_state'] && $schemasOk,
+            $names === ['import_json', 'list_tables', 'query', 'reference', 'save_state', 'session_note']
+                && $schemasOk,
             implode(',', $names)
         );
 
@@ -681,6 +697,110 @@ function fm_selftest(): int
             $persisted = ($writtenPayload['teams'][0]['name'] ?? '') === 'Persisted FC';
         }
         $check('an import is also written to the save directory', $persisted);
+
+        // 12c. a session note is written and comes back in the next briefing
+        $noteCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 24,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'session_note',
+                'arguments' => [
+                    'kind' => 'progress',
+                    'headline' => 'Recorded the away match and the pass map.',
+                    'next_step' => 'Capture the defensive midfielder role list.',
+                ],
+            ],
+        ]);
+        $note = json_decode($noteCall['result']['content'][0]['text'] ?? '{}', true);
+
+        $stateAfterNote = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 25,
+            'method' => 'tools/call',
+            'params' => ['name' => 'save_state', 'arguments' => []],
+        ]);
+        $briefing = json_decode($stateAfterNote['result']['content'][0]['text'] ?? '{}', true)['briefing'] ?? [];
+        $check(
+            'a session note comes back in the next briefing',
+            ($note['recorded']['kind'] ?? '') === 'progress'
+                && !empty($note['recorded']['recorded_at'])
+                && ($briefing['recent'][0]['headline'] ?? '')
+                    === 'Recorded the away match and the pass map.'
+                && ($briefing['recent'][0]['next_step'] ?? '')
+                    === 'Capture the defensive midfielder role list.'
+                && ($briefing['last_note_days_ago'] ?? null) === 0
+        );
+
+        // 12d. an open question stays open until something answers it
+        $questionCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 26,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'session_note',
+                'arguments' => [
+                    'kind' => 'question',
+                    'headline' => 'Which role list does the game show for a defensive midfielder?',
+                ],
+            ],
+        ]);
+        $questionId = json_decode($questionCall['result']['content'][0]['text'] ?? '{}', true)['recorded']['id'] ?? null;
+
+        $openBefore = json_decode(
+            fm_handle_message([
+                'jsonrpc' => '2.0',
+                'id' => 27,
+                'method' => 'tools/call',
+                'params' => ['name' => 'save_state', 'arguments' => []],
+            ])['result']['content'][0]['text'] ?? '{}',
+            true
+        )['briefing']['open_questions'] ?? [];
+
+        fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 28,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'session_note',
+                'arguments' => [
+                    'kind' => 'decision',
+                    'headline' => 'The captured list settles it.',
+                    'resolves' => $questionId,
+                ],
+            ],
+        ]);
+
+        $openAfter = json_decode(
+            fm_handle_message([
+                'jsonrpc' => '2.0',
+                'id' => 29,
+                'method' => 'tools/call',
+                'params' => ['name' => 'save_state', 'arguments' => []],
+            ])['result']['content'][0]['text'] ?? '{}',
+            true
+        )['briefing']['open_questions'] ?? [];
+
+        $check(
+            'an open question stays open until a note answers it',
+            $questionId !== null
+                && count($openBefore) === 1
+                && $openBefore[0]['id'] === $questionId
+                && $openAfter === []
+        );
+
+        // 12e. the note is persisted beside the sources, like any other write
+        $noteFiles = glob(fm_save_dir() . '/incoming/*.json') ?: [];
+        $notePersisted = false;
+        foreach ($noteFiles as $noteFile) {
+            $decoded = json_decode((string) file_get_contents($noteFile), true);
+            foreach ($decoded['session_log'] ?? [] as $row) {
+                if (($row['headline'] ?? '') === 'Recorded the away match and the pass map.') {
+                    $notePersisted = true;
+                }
+            }
+        }
+        $check('a session note survives a rebuild by being written to the save', $notePersisted);
 
         // 13. the reference catalogue and a drill-down into the role index
         fm_reference_import(fm_pdo_rw());

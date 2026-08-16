@@ -136,6 +136,81 @@ function fm_reference_get(?string $document, ?string $section, ?string $search):
 }
 
 /**
+ * Record one line in the session log.
+ *
+ * The timestamp and the in-game date come from the server, not from the caller: a model
+ * cannot know the real-world time, and a briefing that says "yesterday" has to be right.
+ */
+function fm_record_session_note(
+    string $kind,
+    string $headline,
+    ?string $detail,
+    ?string $nextStep,
+    ?int $resolves
+): array {
+    $pdo = fm_pdo_rw();
+    $gameDate = $pdo->query('SELECT current_game_date FROM game_state WHERE id = 1')->fetchColumn();
+
+    $row = [
+        'recorded_at' => gmdate('c'),
+        'game_date' => $gameDate !== false ? $gameDate : null,
+        'kind' => $kind,
+        'headline' => $headline,
+        'detail' => $detail,
+        'next_step' => $nextStep,
+        'source' => 'session note',
+    ];
+
+    $pdo->beginTransaction();
+    try {
+        $columns = array_keys($row);
+        $stmt = $pdo->prepare(
+            'INSERT INTO ' . fm_ident('session_log') . ' (' . implode(',', array_map('fm_ident', $columns))
+            . ') VALUES (' . implode(',', array_fill(0, count($columns), '?')) . ')'
+        );
+        $stmt->execute(array_values($row));
+        $row['id'] = (int) $pdo->lastInsertId();
+
+        $resolved = null;
+        if ($resolves !== null) {
+            $lookup = $pdo->prepare(
+                "SELECT id FROM session_log WHERE id = ? AND kind = 'question' AND resolved_at IS NULL"
+            );
+            $lookup->execute([$resolves]);
+            if ($lookup->fetchColumn() === false) {
+                throw new FmMcpError(
+                    sprintf('There is no open question with id %d to resolve.', $resolves),
+                    -32602
+                );
+            }
+            $close = $pdo->prepare(
+                'UPDATE ' . fm_ident('session_log') . ' SET resolved_at = ?, resolved_by = ? WHERE id = ?'
+            );
+            $close->execute([$row['recorded_at'], $row['id'], $resolves]);
+            $resolved = $resolves;
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e instanceof FmMcpError
+            ? $e
+            : new FmMcpError('The note was not recorded: ' . $e->getMessage(), -32602);
+    }
+
+    // Persisted like any other write, so a rebuild does not forget the thread.
+    $persistedAs = fm_persist_import(['session_log' => [$row]]);
+
+    return [
+        'recorded' => $row,
+        'resolved_question' => $resolved,
+        'persisted_as' => $persistedAs,
+        'briefing' => fm_briefing(fm_pdo_ro()),
+    ];
+}
+
+/**
  * Write an import payload into the active save directory.
  *
  * The database is generated from the committed files, so anything written only to the
@@ -297,6 +372,62 @@ function fm_tool_definitions(): array
             ],
         ],
         [
+            'name' => 'session_note',
+            'title' => 'Record where the work stands',
+            'description' =>
+                "Write one line into the session log and return it, together with the refreshed "
+                . "briefing.\n\n"
+                . "A connector has no memory between conversations. Every chat starts blank, and "
+                . "nothing said in this one reaches the next unless it is written here. Record a "
+                . "note after any substantive step - data recorded, a conclusion reached, a "
+                . "decision taken, a question left open - so the next conversation can pick the "
+                . "thread up from save_state.\n\n"
+                . "kind is one of: \"progress\" for what was done, \"decision\" for a choice made "
+                . "and the reasoning behind it, \"question\" for something unresolved that should "
+                . "keep surfacing until it is answered. A question stays in the briefing until a "
+                . "later note names its id in \"resolves\".\n\n"
+                . "headline is one sentence in the past tense. Put the reasoning in detail, and "
+                . "what should happen next in next_step. The timestamp and the in-game date are "
+                . "filled in by the server, so never write them into the text.",
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'kind' => [
+                        'type' => 'string',
+                        'enum' => ['progress', 'decision', 'question'],
+                        'description' => 'progress = what was done, decision = a choice made, question = unresolved.',
+                    ],
+                    'headline' => [
+                        'type' => 'string',
+                        'description' => 'One sentence, past tense, describing what happened.',
+                    ],
+                    'detail' => [
+                        'type' => 'string',
+                        'description' => 'The reasoning or the specifics. Optional.',
+                    ],
+                    'next_step' => [
+                        'type' => 'string',
+                        'description' => 'What the next conversation should pick up. Optional.',
+                    ],
+                    'resolves' => [
+                        'type' => 'integer',
+                        'description' =>
+                            'The id of an open question this note answers. It stops appearing '
+                            . 'in the briefing once resolved.',
+                    ],
+                ],
+                'required' => ['kind', 'headline'],
+                'additionalProperties' => false,
+            ],
+            'annotations' => [
+                'title' => 'Record where the work stands',
+                'readOnlyHint' => false,
+                'destructiveHint' => false,
+                'idempotentHint' => false,
+                'openWorldHint' => false,
+            ],
+        ],
+        [
             'name' => 'reference',
             'title' => 'FM26 rules and tactic reference',
             'description' =>
@@ -400,6 +531,24 @@ function fm_call_tool(string $name, array $arguments): array
 
         case 'save_state':
             return fm_tool_result(fm_save_state());
+
+        case 'session_note':
+            $kind = $arguments['kind'] ?? null;
+            $headline = $arguments['headline'] ?? null;
+            if (!is_string($kind) || !in_array($kind, ['progress', 'decision', 'question'], true)) {
+                throw new FmMcpError('"kind" must be one of: progress, decision, question.', -32602);
+            }
+            if (!is_string($headline) || trim($headline) === '') {
+                throw new FmMcpError('"headline" is required and must be a non-empty string.', -32602);
+            }
+
+            return fm_tool_result(fm_record_session_note(
+                $kind,
+                trim($headline),
+                $arguments['detail'] ?? null,
+                $arguments['next_step'] ?? null,
+                isset($arguments['resolves']) ? (int) $arguments['resolves'] : null
+            ));
 
         case 'reference':
             $document = $arguments['document'] ?? null;

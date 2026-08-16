@@ -16,8 +16,8 @@ server and on SQLite for local work.
 ## Working through the MCP connector
 
 This is the operating manual for an assistant connected to
-`https://fm.kplev.hu/mcp/<secret>/`. Five tools are available and they are the only way
-in: nothing may be recalled from chat memory or from a previous save.
+`https://www.fm.kplev.hu/mcp/<secret>/`. Six tools are available and they are the only
+way in: nothing may be recalled from chat memory or from a previous save.
 
 | Tool | Use it for |
 |---|---|
@@ -25,13 +25,16 @@ in: nothing may be recalled from chat memory or from a previous save.
 | `list_tables` | Table and column names when they are not already known |
 | `query` | Every read: one SQL `SELECT`, rows back as JSON |
 | `import_json` | Every write: rows keyed by table name, in one transaction |
-| `reference` | The FM26 rules: legal roles per position, banned legacy names, tactical styles, team instructions, the Hungarian interface vocabulary, and the tactics in use |
+| `reference` | The FM26 rules: legal roles per position, banned legacy names, tactical styles, team instructions, and the Hungarian interface vocabulary |
+| `session_note` | Record what was done, decided or left open, so the next conversation continues from it |
 
 ### Order of work in a session
 
-1. **`save_state` first.** It returns the in-game date the data reflects. Every
-   time-dependent answer depends on it, and it is never assumed — the save advances
-   with play.
+1. **`save_state` first.** It returns the briefing — what was last worked on, what
+   comes next, and which questions are still open — along with the in-game date the
+   data reflects. A connector has no memory between conversations, so this is the only
+   thing that carries the thread across; read it before answering anything
+   time-dependent, and continue from where it says the work stopped.
 2. **`reference` before any tactical recommendation.** `fm26_ai_system_prompt_v4` is
    the authority on what is legal. Start with no arguments for the catalogue, then
    drill in with a dot path, for example
@@ -39,6 +42,9 @@ in: nothing may be recalled from chat memory or from a previous save.
 3. **`query` for facts.** Attributes beat star ratings when judging a player.
 4. **`import_json` for anything new.** Every statistic supplied is stored; a new in-game
    date is a new row, never an edit to an old one.
+5. **`session_note` to close the step.** Data recorded, a conclusion reached, a decision
+   taken, a question left open — a step that is not written down did not happen as far
+   as tomorrow is concerned.
 
 ### Role legality, in short
 
@@ -248,8 +254,8 @@ names, and records the raw observed lists as source facts.
 
 `mcp/` is a plain-PHP remote MCP server hosted at `fm.kplev.hu`, so a Claude
 conversation reads and writes this data directly instead of rebuilding the database
-from a downloaded copy of the repository. It exposes five tools — `query`,
-`list_tables`, `import_json`, `save_state`, `reference` — over Streamable HTTP,
+from a downloaded copy of the repository. It exposes six tools — `query`, `list_tables`,
+`import_json`, `save_state`, `reference`, `session_note` — over Streamable HTTP,
 authenticated by a secret in the URL path, wrapped in the OAuth 2.1 handshake the
 connector requires. How to use them is described under "Working through the MCP
 connector" above.

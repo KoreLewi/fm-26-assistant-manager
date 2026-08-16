@@ -397,3 +397,23 @@ CREATE TABLE IF NOT EXISTS tactic_lineups (
 
 CREATE INDEX IF NOT EXISTS idx_tactic_slots_tactic ON tactic_slots(tactic_id);
 CREATE INDEX IF NOT EXISTS idx_tactic_lineups_player ON tactic_lineups(player_id);
+
+-- What the assistant and the manager were working on. Career data: a connector has no
+-- memory between conversations, so the thread of the work only survives here.
+
+CREATE TABLE IF NOT EXISTS session_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recorded_at TEXT NOT NULL,
+    game_date TEXT,
+    kind TEXT NOT NULL CHECK(kind IN ('progress', 'decision', 'question')),
+    headline TEXT NOT NULL,
+    detail TEXT,
+    next_step TEXT,
+    resolved_at TEXT,
+    resolved_by INTEGER,
+    source TEXT,
+    FOREIGN KEY(resolved_by) REFERENCES session_log(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_log_recorded ON session_log(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_session_log_open ON session_log(kind, resolved_at);

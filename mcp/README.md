@@ -44,7 +44,8 @@ grants full read and write access to the save.
 | `query` | Rows of one read-only `SELECT`, with column names and a truncation flag |
 | `list_tables` | Every table with its columns, row count, and whether `import_json` writes to it |
 | `import_json` | Rows written per table, plus the resulting save state |
-| `save_state` | In-game date, season, club, squad size, latest snapshot and match dates, row counts |
+| `save_state` | The briefing - what was last worked on, what comes next, which questions are open - plus in-game date, season, club, squad size and row counts |
+| `session_note` | Records one line in the session log so the next conversation can pick the thread up |
 | `reference` | The FM26 rules: the legal role system, the banned legacy names, the styles, the instructions, the Hungarian vocabulary. Reads a section by path, or finds one by keyword with `search`. |
 
 `query` accepts a single `SELECT` (optionally starting with `WITH`). Statement chaining
@@ -54,6 +55,12 @@ Results are capped at `max_rows` (default 500); a truncated result says so.
 
 `condition` is a MySQL keyword, so a query reading that column of `match_players` needs
 it backquoted: ``SELECT `condition` FROM match_players``.
+
+A connector keeps no state between conversations: every chat starts blank, and the only
+thing that carries across is what is in the database. `session_log` is that thread -
+`session_note` writes to it, and `save_state` reads the last few entries and every
+unresolved question back as a briefing, which is why the connector's instructions tell
+a client to start there.
 
 `reference` reads the `fm_` tables, which are generated from `data/reference/`. A
 section is addressed by a dot-joined path starting with the document name, and `search`

@@ -64,6 +64,7 @@ TABLES = {
     "tactic_instructions": ["id", "tactic_id", "phase", "group_name", "instruction",
                             "value_en", "value_hu", "source"],
     "tactic_lineups": ["id", "tactic_id", "label", "slot", "player_id", "raw_label"],
+    "session_log": ["id", "recorded_at", "game_date", "kind", "headline", "detail", "next_step", "resolved_at", "resolved_by", "source"],
     "scout_reports": ["id", "player_id", "scout_game_date", "scout_name",
                       "scouting_context", "current_age", "current_team_id",
                       "current_position", "current_value_text", "recommendation",
@@ -108,6 +109,7 @@ def main() -> None:
             "matches", "match_players", "pass_map_nodes", "pass_map_links",
             "match_team_stats", "tactical_observations", "player_evaluations",
             "player_season_stats", "league_standings", "scout_reports",
+            "session_log",
         ]
         for table in order:
             insert_rows(conn, table, payload.get(table, []))

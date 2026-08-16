@@ -48,7 +48,10 @@ file on a public web server until `.htaccess` says otherwise.
    put a rule that is true of the game into a career table.
 8. **Tracing is a debugging aid, not a default.** `trace` writes a line per request,
    readable at `bootstrap.php?token=<secret>&trace=1`. Leave it off.
-9. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
+9. **The connector has no memory.** Every conversation starts blank; `session_log` is
+   the only thread across them. `save_state` returns it as a briefing and `session_note`
+   writes to it, so a step nobody wrote down is a step the next conversation cannot see.
+10. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
    historical snapshots are never overwritten, unreadable values are stored as `NULL`
    rather than guessed, and inferences are marked as inferences.
 

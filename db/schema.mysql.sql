@@ -429,3 +429,20 @@ CREATE TABLE IF NOT EXISTS tactic_lineups (
     CONSTRAINT fk_tactic_lineups_tactic FOREIGN KEY (tactic_id) REFERENCES tactics(id),
     CONSTRAINT fk_tactic_lineups_player FOREIGN KEY (player_id) REFERENCES players(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS session_log (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    recorded_at VARCHAR(32) NOT NULL,
+    game_date VARCHAR(32),
+    kind VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    headline VARCHAR(500) NOT NULL,
+    detail TEXT,
+    next_step TEXT,
+    resolved_at VARCHAR(32),
+    resolved_by INT,
+    source TEXT,
+    KEY idx_session_log_recorded (recorded_at),
+    KEY idx_session_log_open (kind, resolved_at),
+    CONSTRAINT fk_session_log_resolved_by FOREIGN KEY (resolved_by) REFERENCES session_log(id),
+    CONSTRAINT chk_session_log_kind CHECK (kind IN ('progress','decision','question'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -138,6 +138,9 @@ function fm_import_tables(): array
             'value_en', 'value_hu', 'source',
         ],
         'tactic_lineups' => ['id', 'tactic_id', 'label', 'slot', 'player_id', 'raw_label'],
+        'session_log' => [
+            'id', 'recorded_at', 'game_date', 'kind', 'headline', 'detail', 'next_step', 'resolved_at', 'resolved_by', 'source',
+        ],
         'scout_reports' => [
             'id', 'player_id', 'scout_game_date', 'scout_name',
             'scouting_context', 'current_age', 'current_team_id',
@@ -162,6 +165,7 @@ function fm_import_order(): array
         'matches', 'match_players', 'pass_map_nodes', 'pass_map_links',
         'match_team_stats', 'tactical_observations', 'player_evaluations',
         'player_season_stats', 'league_standings', 'scout_reports',
+        'session_log',
     ];
 }
 
@@ -743,6 +747,47 @@ function fm_import_transactional(array $payload, bool $monotonicGameState = fals
     return $written;
 }
 
+/** How many notes a briefing carries back. The full log is there to be queried. */
+const FM_BRIEFING_NOTES = 5;
+
+/**
+ * What the assistant and the manager were last working on.
+ *
+ * A connector has no memory between conversations: every chat starts blank, and the
+ * only thing that carries across is what is in the database. This is that thread.
+ */
+function fm_briefing(PDO $pdo): array
+{
+    $recent = $pdo->query(
+        'SELECT id, recorded_at, game_date, kind, headline, detail, next_step
+           FROM session_log ORDER BY recorded_at DESC, id DESC LIMIT ' . FM_BRIEFING_NOTES
+    )->fetchAll();
+
+    $open = $pdo->query(
+        "SELECT id, recorded_at, game_date, headline, detail
+           FROM session_log WHERE kind = 'question' AND resolved_at IS NULL
+          ORDER BY recorded_at, id"
+    )->fetchAll();
+
+    $daysAgo = null;
+    if ($recent !== []) {
+        $last = strtotime((string) $recent[0]['recorded_at']);
+        if ($last !== false) {
+            $daysAgo = (int) floor((time() - $last) / 86400);
+        }
+    }
+
+    return [
+        'last_note_days_ago' => $daysAgo,
+        'recent' => $recent,
+        'open_questions' => $open,
+        'note' => $recent === []
+            ? 'Nothing recorded yet. Write a session_note after any substantive step so the '
+                . 'next conversation can pick the thread up.'
+            : 'The five most recent notes. Query session_log for the rest.',
+    ];
+}
+
 /** Current save state: in-game date, season, club and per-table row counts. */
 function fm_save_state(): array
 {
@@ -753,8 +798,9 @@ function fm_save_state(): array
         $gameState = [];
     }
 
+    $names = fm_table_names($pdo);
     $counts = [];
-    foreach (fm_table_names($pdo) as $name) {
+    foreach ($names as $name) {
         $counts[$name] = (int) $pdo->query('SELECT COUNT(*) FROM ' . fm_ident($name))->fetchColumn();
     }
 
@@ -771,7 +817,10 @@ function fm_save_state(): array
         $pdo->rollBack();
     }
 
+    $briefing = in_array('session_log', $names, true) ? fm_briefing($pdo) : null;
+
     return [
+        'briefing' => $briefing,
         'current_game_date' => $gameState['current_game_date'] ?? null,
         'season' => $gameState['season'] ?? null,
         'game_state_notes' => $gameState['notes'] ?? null,
