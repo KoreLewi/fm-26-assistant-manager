@@ -33,6 +33,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/reference.php';
+require_once __DIR__ . '/tactic.php';
 require_once __DIR__ . '/oauth.php';
 
 /** Host facts needed to diagnose an install without shell access. */
@@ -369,6 +370,13 @@ function fm_bootstrap(bool $force): array
             }
             $lines[] = sprintf('  imported %-52s %5d rows', basename($file), $rows);
         }
+        // Tactics load last: their line-ups resolve against the squad, which the files
+        // above have just populated.
+        foreach (glob(fm_save_dir() . '/tactics/*.json') ?: [] as $tacticFile) {
+            $written = fm_tactic_import($pdo, $tacticFile);
+            $lines[] = sprintf('  tactic   %-52s %5d rows', basename($tacticFile), array_sum($written));
+        }
+
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
