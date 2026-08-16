@@ -43,9 +43,12 @@ file on a public web server until `.htaccess` says otherwise.
    every OAuth artefact is a payload signed with that secret rather than stored state,
    so a database rebuild keeps the connector working and rotating the secret cuts every
    token.
-7. **Tracing is a debugging aid, not a default.** `trace` writes a line per request,
+7. **`fm_` tables are the FM26 rules, unprefixed tables are the career.** A save reset
+   drops exactly the unprefixed ones. Never put career data in an `fm_` table, and never
+   put a rule that is true of the game into a career table.
+8. **Tracing is a debugging aid, not a default.** `trace` writes a line per request,
    readable at `bootstrap.php?token=<secret>&trace=1`. Leave it off.
-8. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
+9. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
    historical snapshots are never overwritten, unreadable values are stored as `NULL`
    rather than guessed, and inferences are marked as inferences.
 
@@ -54,11 +57,16 @@ file on a public web server until `.htaccess` says otherwise.
 ```bash
 php mcp/server.php --selftest                          # protocol, tools, SQL guard, imports, OAuth
 php mcp/server.php --token                             # a bearer token for testing by hand
+
+# Rebuild locally and prove the three builds agree.
 FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --info    # host and connection report
 FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --force   # rebuild on MySQL
 php mcp/bootstrap.php --sqlite=/tmp/check.sqlite3 --force        # rebuild on SQLite
 python3 scripts/compare_databases.py fm26.sqlite3 /tmp/check.sqlite3
+
 python3 scripts/verify_db.py
+python3 scripts/verify_reference.py
+python3 scripts/verify_tactic.py
 python3 scripts/validate.py
 python3 scripts/validate_roles.py
 ```
@@ -70,11 +78,12 @@ refused. `mcp/README.md` has the curl commands.
 ## Layout
 
 ```
-data/                committed source JSON — the real data
+data/reference/      the FM26 rules, shared by every career
+data/saves/<slug>/   one career; the active one is named in mcp/config.php
 db/schema.sql        SQLite schema (Python path)
 db/schema.mysql.sql  MySQL schema (hosted path) — same tables, engine-specific types
 scripts/             Python importers, validators, and the build comparison
-mcp/                 PHP MCP server (server, oauth, tools, db, bootstrap, config)
+mcp/                 PHP MCP server (server, oauth, tools, reference, tactic, db, bootstrap)
 .htaccess            blocks HTTP access to everything except mcp/
 env                  FTP credentials — gitignored
 ```

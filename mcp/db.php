@@ -555,6 +555,20 @@ function fm_table_names(PDO $pdo): array
     return $names;
 }
 
+/**
+ * The tables that belong to the career rather than to the FM26 reference.
+ *
+ * The prefix is the boundary: fm_ describes the game and outlives any one career, so a
+ * reset drops exactly what is left.
+ */
+function fm_save_tables(PDO $pdo): array
+{
+    return array_values(array_filter(
+        fm_table_names($pdo),
+        static fn (string $name): bool => !str_starts_with($name, 'fm_')
+    ));
+}
+
 /** Table names with their column definitions, read from the live schema. */
 function fm_list_tables(): array
 {

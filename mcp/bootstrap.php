@@ -18,7 +18,8 @@
  * aborted. The in-game clock is only ever moved forward, so a template file carrying a
  * placeholder date cannot rewind the save.
  *
- * CLI:  php mcp/bootstrap.php [--force] [--info]
+ * CLI:  php mcp/bootstrap.php [--force] [--info] [--reset]
+ *        --reset drops and reloads only the career; the fm_ tables are left alone.
  *       php mcp/bootstrap.php --sqlite=/path/to/fm26.sqlite3 [--force]
  *         builds without mcp/config.php, for a local rebuild or in CI.
  * HTTP: POST https://host/mcp/bootstrap.php?token=<secret>&confirm=rebuild
@@ -254,7 +255,7 @@ function fm_source_files(): array
 /**
  * @return array{lines: string[], ok: bool}
  */
-function fm_bootstrap(bool $force): array
+function fm_bootstrap(bool $force, bool $resetOnly = false): array
 {
     if (!extension_loaded('zlib')) {
         throw new FmMcpError('The zlib extension is required to decode the committed snapshot.');
@@ -312,8 +313,10 @@ function fm_bootstrap(bool $force): array
         $pdo->exec('PRAGMA foreign_keys = OFF');
     } else {
         $pdo = fm_pdo_rw();
-        $existing = fm_table_names($pdo);
-        if ($existing !== [] && !$force) {
+        // A reset drops only the career; a rebuild drops everything, which is safe
+        // because both sides are generated from committed files.
+        $existing = $resetOnly ? fm_save_tables($pdo) : fm_table_names($pdo);
+        if ($existing !== [] && !$force && !$resetOnly) {
             throw new FmMcpError(sprintf(
                 'The database %s already holds %d table(s). Pass --force (CLI) or &force=1 (HTTP) to rebuild it.',
                 $config['mysql']['database'],
@@ -321,7 +324,15 @@ function fm_bootstrap(bool $force): array
             ));
         }
         if ($existing !== []) {
-            $lines[] = sprintf('Dropped %d existing table(s)', fm_mysql_drop_all($pdo));
+            $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+            foreach ($existing as $table) {
+                $pdo->exec('DROP TABLE IF EXISTS ' . fm_ident($table));
+            }
+            $lines[] = sprintf(
+                'Dropped %d %s table(s)',
+                count($existing),
+                $resetOnly ? 'career' : 'existing'
+            );
         }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
         foreach (fm_split_statements((string) file_get_contents($schemaPath)) as $statement) {
@@ -330,9 +341,14 @@ function fm_bootstrap(bool $force): array
     }
     $lines[] = 'Schema created from db/' . basename($schemaPath);
 
-    // The reference describes the game, so it loads for every career.
-    foreach (fm_reference_import($pdo) as $table => $count) {
-        $lines[] = sprintf('  reference %-52s %5d rows', $table, $count);
+    // The reference describes the game, so it loads for every career - and a reset
+    // leaves it exactly as it was.
+    if ($resetOnly) {
+        $lines[] = 'Reference left untouched';
+    } else {
+        foreach (fm_reference_import($pdo) as $table => $count) {
+            $lines[] = sprintf('  reference %-52s %5d rows', $table, $count);
+        }
     }
 
     $sources = fm_source_files();
@@ -436,6 +452,7 @@ function fm_bootstrap(bool $force): array
 
 if (PHP_SAPI === 'cli') {
     $force = in_array('--force', $argv ?? [], true);
+    $resetOnly = in_array('--reset', $argv ?? [], true);
 
     // --sqlite builds without config.php, for a local rebuild or in CI.
     foreach ($argv ?? [] as $argument) {
@@ -457,7 +474,7 @@ if (PHP_SAPI === 'cli') {
     }
 
     try {
-        $result = fm_bootstrap($force);
+        $result = fm_bootstrap($force, $resetOnly);
         echo implode("\n", $result['lines']), "\n";
         exit(0);
     } catch (Throwable $e) {
@@ -579,16 +596,18 @@ if (isset($_GET['trace'])) {
     exit;
 }
 
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || ($_GET['confirm'] ?? '') !== 'rebuild') {
+$confirm = (string) ($_GET['confirm'] ?? '');
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || !in_array($confirm, ['rebuild', 'reset'], true)) {
     http_response_code(400);
     echo "POST with &confirm=rebuild to build the database. Add &force=1 to replace an existing one.\n";
+    echo "POST with &confirm=reset to reload the career and leave the FM26 reference alone.\n";
     echo "GET with &info=1 to see the host report.\n";
     echo "GET with &pull=1 to fetch what import_json wrote since the last commit.\n";
     exit;
 }
 
 try {
-    $result = fm_bootstrap(($_GET['force'] ?? '') === '1');
+    $result = fm_bootstrap(($_GET['force'] ?? '') === '1', $confirm === 'reset');
     echo implode("\n", $result['lines']), "\n";
 } catch (Throwable $e) {
     http_response_code(500);

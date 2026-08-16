@@ -96,17 +96,54 @@ jobs:
       - name: Build the same database with the Python importers
         run: |
           python3 scripts/init_db.py
+          python3 scripts/import_reference.py
           python3 scripts/import_initial_snapshot.py
           python3 scripts/import_json.py data/saves/valencia-2025-26/supplemental/filip_ugrinic_2025-12-22.json
           python3 scripts/import_json.py data/saves/valencia-2025-26/season_2025-26_matches_2026-01-07.json
           python3 scripts/import_json.py data/saves/valencia-2025-26/player_umar_sadiq_2026-01-07.json
           python3 scripts/import_json.py data/saves/valencia-2025-26/match_barcelona_away_2026-01-10.json
+          python3 scripts/import_tactic.py data/saves/valencia-2025-26/tactics/mestral.json
+
+      - name: Verify the reference and the tactic loaded completely
+        run: |
+          python3 scripts/verify_reference.py
+          python3 scripts/verify_tactic.py
+
+      - name: Check the recorded role labels against the reference
+        run: python3 scripts/validate_roles.py
 
       # The two importers share a table and column whitelist that lives in two files,
       # and the schema is declared twice, once per engine. Comparing the databases they
       # produce is what stops the copies from drifting.
       - name: Compare MySQL against SQLite row by row
         run: python3 scripts/compare_databases.py fm26.sqlite3 mysql://root:root@127.0.0.1:3306/fm26_ci
+
+      - name: A save reset leaves the reference alone
+        env:
+          FM26_CONFIG: mcp/config.ci.php
+        run: |
+          count_reference() {
+            php -r '
+              require "mcp/db.php";
+              $pdo = fm_pdo_rw(); $n = 0;
+              foreach (fm_table_names($pdo) as $t) {
+                if (str_starts_with($t, "fm_")) {
+                  $n += (int) $pdo->query("SELECT COUNT(*) FROM " . fm_ident($t))->fetchColumn();
+                }
+              }
+              echo $n;'
+          }
+          before=$(count_reference)
+          php mcp/bootstrap.php --reset
+          after=$(count_reference)
+          echo "reference rows: $before -> $after"
+          test "$before" -gt 0
+          test "$before" = "$after"
+          php -r '
+            require "mcp/db.php";
+            $players = (int) fm_pdo_ro()->query("SELECT COUNT(*) FROM players")->fetchColumn();
+            if ($players !== 27) { fwrite(STDERR, "the career did not reload: $players players\n"); exit(1); }
+            echo "career reloaded: $players players\n";'
 
       - name: Build with the SQLite driver as well and compare
         run: |

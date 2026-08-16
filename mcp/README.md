@@ -45,7 +45,7 @@ grants full read and write access to the save.
 | `list_tables` | Every table with its columns, row count, and whether `import_json` writes to it |
 | `import_json` | Rows written per table, plus the resulting save state |
 | `save_state` | In-game date, season, club, squad size, latest snapshot and match dates, row counts |
-| `reference` | The committed FM26 reference documents: the legal role system, the Hungarian interface vocabulary, the tactics in use |
+| `reference` | The FM26 rules: the legal role system, the banned legacy names, the styles, the instructions, the Hungarian vocabulary. Reads a section by path, or finds one by keyword with `search`. |
 
 `query` accepts a single `SELECT` (optionally starting with `WITH`). Statement chaining
 with `;`, `PRAGMA`, `SET`, and every write statement are refused before execution, and
@@ -55,10 +55,12 @@ Results are capped at `max_rows` (default 500); a truncated result says so.
 `condition` is a MySQL keyword, so a query reading that column of `match_players` needs
 it backquoted: ``SELECT `condition` FROM match_players``.
 
-`reference` reads files, not tables. Reference documents describe how FM26 works rather
-than recording the save, so they stay as JSON under `data/` — the catalogue is built by
-scanning that directory, and a new document becomes available as soon as it is
-committed, with nothing to register.
+`reference` reads the `fm_` tables, which are generated from `data/reference/`. A
+section is addressed by a dot-joined path starting with the document name, and `search`
+finds sections containing a keyword, narrowest match first. The tactic is no longer a
+reference document: it describes the career rather than the game, so it lives in the
+`tactics`, `tactic_slots`, `tactic_instructions` and `tactic_lineups` tables and is
+reached with `query`.
 
 ## Install
 
@@ -116,13 +118,25 @@ curl 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&info=1'
 ```bash
 curl -X POST 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=rebuild'
 # add &force=1 to rebuild over an existing database (every table is dropped first)
+
+# Reload only the career and leave the FM26 rules alone:
+curl -X POST 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=reset'
+
+# Fetch what import_json wrote on the host since the last commit:
+curl 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&pull=1'
 ```
+
+The database holds one career at a time, named by `active_save` in `config.php`.
+Switching careers is a new directory under `data/saves/`, a changed setting, and a
+rebuild; the previous career stays in the repository. Nothing in the connector can
+switch or reset a career - that needs the token.
 
 With shell access the same thing runs as `php mcp/bootstrap.php [--force]`.
 
-The build runs `db/schema.mysql.sql`, then replays every committed source file: the
-`*.json.gz.b64` snapshot first, then `supplemental/`, then the dated files in the
-active save directory. Foreign keys are deferred for the duration of the load and every declared
+The build runs `db/schema.mysql.sql`, loads the FM26 reference from `data/reference/`,
+then replays the active career: the `*.json.gz.b64` snapshot first, then
+`supplemental/`, then the dated files, then whatever `import_json` wrote since the last
+commit, and finally the tactics, whose line-ups resolve against the squad just loaded. Foreign keys are deferred for the duration of the load and every declared
 foreign key is verified afterwards, so filename order cannot break the rebuild. The
 in-game clock is only ever moved forward, so a template file carrying a placeholder date
 cannot rewind the save.

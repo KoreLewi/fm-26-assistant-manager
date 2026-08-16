@@ -85,42 +85,54 @@ row fails. A value that is truncated or unreadable on the source screen is store
 
 ```
 data/
-  fm26_ai_system_prompt_v4.json    FM26 role + instruction reference (v4.1)
-  fm26_role_locale_hu.json         Hungarian UI <-> English role names
-  import_template.json             Empty shape of an import file
-  initial_valencia_snapshot_*.b64  First squad snapshot (gzip+base64 JSON)
-  season_2025-26_matches_*.json    Fixtures, match stats, season stats, league table
-  player_umar_sadiq_*.json         Single-player import example
-  match_barcelona_away_*.json      Match + pass map import example
-  tactics/mestral.json             Current tactic (shape, roles, instructions)
-  supplemental/                    One-off player additions
+  import_template.json              Empty shape of an import file
+  reference/                        FM26 knowledge - loaded for every career
+    fm26_ai_system_prompt_v4.json   Role + instruction reference (v4.1)
+    fm26_role_locale_hu.json        Hungarian UI <-> English role names
+  saves/
+    valencia-2025-26/               One directory per career
+      initial_valencia_snapshot_*.b64   First squad snapshot (gzip+base64 JSON)
+      season_2025-26_matches_*.json     Fixtures, match stats, season stats, table
+      player_umar_sadiq_*.json          Single-player import example
+      match_barcelona_away_*.json       Match + pass map import example
+      supplemental/                     One-off player additions
+      tactics/mestral.json              Current tactic (shape, roles, instructions)
+      known_role_conflicts.json         Recorded labels the reference disagrees with
+      incoming/                         Written by import_json on the host
 db/
   schema.sql                       Full table definitions (SQLite, local builds)
   schema.mysql.sql                 The same tables for MySQL/MariaDB (the hosted build)
   common_queries.sql               Example queries
 scripts/
   init_db.py                       Create the database from schema.sql
+  import_reference.py              Load data/reference/ into the fm_ tables
   import_initial_snapshot.py       Load the committed initial snapshot
   import_json.py <file>            Load any import JSON
+  import_tactic.py <file>          Load a tactic into the tactic tables
   query.py "<SQL>"                 Run a query
   verify_db.py                     Structural sanity check
+  verify_reference.py              The reference loaded completely
+  verify_tactic.py                 The tactic loaded and resolved
   validate.py                      Data integrity rules
-  validate_roles.py                Role-reference consistency check
+  validate_roles.py                Role-reference consistency and recorded-label conflicts
   rebuild_roles_from_ingame.py     Rebuild the role reference from observed lists
   compare_databases.py             Compare two builds of the database row by row
-mcp/                               Remote MCP server (PHP) — see mcp/README.md
+mcp/                               Remote MCP server (PHP) - see mcp/README.md
   server.php                       Entry point: auth, JSON-RPC dispatch, --selftest
   oauth.php                        The OAuth 2.1 layer the connector requires
   tools.php                        query / list_tables / import_json / save_state / reference
+  reference.php                    Parse data/reference/ into the fm_ tables
+  tactic.php                       Parse a tactic file into the tactic tables
   db.php                           Connections, read-only guard, SQL guard, importer
-  bootstrap.php                    Build the database on the host from db/ and data/
-.github/workflows/validate.yml     CI: build, import, verify, validate on every push
+  bootstrap.php                    Build, rebuild or reset the database on the host
+.github/workflows/validate.yml     CI: build three ways, compare, verify, validate
 ```
 
 ## Quick start
 
 ```bash
 python3 scripts/init_db.py
+python3 scripts/import_reference.py          # the FM26 rules, shared by every career
 python3 scripts/import_initial_snapshot.py
 
 # Foreign keys are enforced during a Python import, so files run oldest-first and a
@@ -131,7 +143,12 @@ python3 scripts/import_json.py data/saves/valencia-2025-26/season_2025-26_matche
 python3 scripts/import_json.py data/saves/valencia-2025-26/player_umar_sadiq_2026-01-07.json
 python3 scripts/import_json.py data/saves/valencia-2025-26/match_barcelona_away_2026-01-10.json
 
+# The tactic loads last: its line-ups resolve against the squad.
+python3 scripts/import_tactic.py data/saves/valencia-2025-26/tactics/mestral.json
+
 python3 scripts/verify_db.py
+python3 scripts/verify_reference.py
+python3 scripts/verify_tactic.py
 python3 scripts/validate.py
 python3 scripts/validate_roles.py
 python3 scripts/query.py "SELECT name FROM players ORDER BY name;"
@@ -258,7 +275,34 @@ automatically; nothing is uploaded by hand. `.htaccess` refuses HTTP access to `
 requests, and `mcp/config.php` — which holds the database password and the capability
 token — is denied as well.
 
+## Two sides of the database
+
+Table names mark the boundary. `fm_` tables hold FM26 knowledge - the legal roles per
+position and phase, the banned legacy names, the preset styles, the team instructions,
+the Hungarian vocabulary, and every section of both reference documents as searchable
+text. Everything else is the career: the squad, the matches, the tactic, the
+observations.
+
+That makes the two questions joinable in one query - is the role recorded for this
+player legal for his position, does the tactic assign a role the game does not offer -
+and it makes a career removable in one operation.
+
+## Switching careers
+
+The database holds exactly one career. The others stay in the repository, unloaded.
+
+1. Put the new career's files in `data/saves/<slug>/`.
+2. Set `'active_save' => '<slug>'` in `mcp/config.php`.
+3. Rebuild: `POST https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=rebuild&force=1`
+
+`&confirm=reset` drops and reloads only the career tables and leaves the `fm_` tables
+untouched. Nothing in the MCP connector can switch, reset or delete a career; that
+needs the capability token.
+
 ## Roadmap
 
-- **Multi-save support** (planned): a `saves` table and a `save_id` on every row so the
-  same engine serves any club, not just this Valencia save.
+- **Out-of-possession roles per player** (blocked on captures): the tactic records an
+  OOP role per slot, but no source records what each player is suited to out of
+  possession. Recording them needs new screenshots, not new code.
+- **The defensive midfielder role list** (blocked on one capture): three recorded labels
+  disagree with the reference. See `data/saves/valencia-2025-26/known_role_conflicts.json`.
