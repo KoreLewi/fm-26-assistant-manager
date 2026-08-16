@@ -21,6 +21,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/tools.php';
+require_once __DIR__ . '/reference.php';
 require_once __DIR__ . '/oauth.php';
 
 const FM_MCP_SERVER_NAME = 'fm26-assistant-manager';
@@ -635,6 +636,8 @@ function fm_selftest(): int
         );
 
         // 13. the reference catalogue and a drill-down into the role index
+        fm_reference_import(fm_pdo_rw());
+
         $catalogueCall = fm_handle_message([
             'jsonrpc' => '2.0',
             'id' => 11,
@@ -652,7 +655,8 @@ function fm_selftest(): int
                 'name' => 'reference',
                 'arguments' => [
                     'document' => 'fm26_ai_system_prompt_v4',
-                    'section' => 'FM26_AI_SYSTEM_PROMPT.2_pitch_positions_and_roles.allowed_roles_index',
+                    'section' => 'fm26_ai_system_prompt_v4.FM26_AI_SYSTEM_PROMPT.'
+                        . '2_pitch_positions_and_roles.allowed_roles_index',
                 ],
             ],
         ]);
@@ -660,7 +664,7 @@ function fm_selftest(): int
         $check(
             'reference lists the documents and returns the role index',
             in_array('fm26_ai_system_prompt_v4', $documentNames, true)
-                && in_array('tactics/mestral', $documentNames, true)
+                && in_array('fm26_role_locale_hu', $documentNames, true)
                 && ($roles['truncated'] ?? true) === false
                 && isset($roles['content']['GK'], $roles['content']['ST'])
         );
@@ -676,9 +680,59 @@ function fm_selftest(): int
             ],
         ]);
         $check(
-            'an unknown reference section is refused with the available keys',
+            'an unknown reference section is refused with the available paths',
             ($badSection['result']['isError'] ?? false) === true
-                && str_contains($badSection['result']['content'][0]['text'] ?? '', 'FM26_AI_SYSTEM_PROMPT')
+                && str_contains($badSection['result']['content'][0]['text'] ?? '', 'fm26_ai_system_prompt_v4')
+        );
+
+        // 15. keyword search and the boundary the table list reports
+        $searchCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 20,
+            'method' => 'tools/call',
+            'params' => ['name' => 'reference', 'arguments' => ['search' => 'Poacher']],
+        ]);
+        $search = json_decode($searchCall['result']['content'][0]['text'] ?? '{}', true);
+        $check(
+            'reference search finds a section by keyword',
+            ($search['match_count'] ?? 0) > 0
+                && str_contains($search['matches'][0]['path'] ?? '', 'fm26_')
+        );
+
+        $sectionCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 21,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'reference',
+                'arguments' => [
+                    'document' => 'fm26_ai_system_prompt_v4',
+                    'section' => 'fm26_ai_system_prompt_v4.FM26_AI_SYSTEM_PROMPT.'
+                        . '2_pitch_positions_and_roles.allowed_roles_index.ST',
+                ],
+            ],
+        ]);
+        $section = json_decode($sectionCall['result']['content'][0]['text'] ?? '{}', true);
+        $check(
+            'reference reads a section out of the database',
+            ($section['source'] ?? '') === 'database'
+                && isset($section['content']['in_possession'])
+        );
+
+        $scopeCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 22,
+            'method' => 'tools/call',
+            'params' => ['name' => 'list_tables', 'arguments' => []],
+        ]);
+        $scoped = json_decode($scopeCall['result']['content'][0]['text'] ?? '{}', true);
+        $scopes = [];
+        foreach ($scoped['tables'] ?? [] as $entry) {
+            $scopes[$entry['table']] = $entry['scope'] ?? null;
+        }
+        $check(
+            'list_tables says which side of the boundary a table is on',
+            ($scopes['fm_roles'] ?? '') === 'reference' && ($scopes['players'] ?? '') === 'save'
         );
 
         // 15. the OAuth layer: metadata documents and signed payloads

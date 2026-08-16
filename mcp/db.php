@@ -597,6 +597,9 @@ function fm_list_tables(): array
 
         $tables[] = [
             'table' => $name,
+            // fm_ tables are the FM26 rules and survive a save reset; the rest are the
+            // career and do not.
+            'scope' => str_starts_with($name, 'fm_') ? 'reference' : 'save',
             'row_count' => (int) $pdo->query('SELECT COUNT(*) FROM ' . fm_ident($name))->fetchColumn(),
             'columns' => $columns,
             'importable' => array_key_exists($name, $importable),

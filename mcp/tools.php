@@ -13,143 +13,135 @@ require_once __DIR__ . '/db.php';
 /** Maximum characters of JSON a single reference response returns before it drills down. */
 const FM_REFERENCE_MAX_CHARS = 60000;
 
-/**
- * The committed reference documents, keyed by name.
- *
- * The FM26 documents describe the game and are shared by every career; a tactic
- * describes one career and is named for the directory it sits in, so the two cannot
- * collide. Nothing has to be registered: a document is available as soon as it is
- * committed.
- *
- * @return array<string,string> name => absolute path
- */
+/** The reference documents present in the database. */
 function fm_reference_documents(): array
 {
-    static $documents = null;
-    if ($documents !== null) {
-        return $documents;
+    $pdo = fm_pdo_ro();
+    $rows = $pdo->query(
+        'SELECT document, COUNT(*) AS sections FROM fm_reference GROUP BY document ORDER BY document'
+    )->fetchAll();
+    if (fm_driver() === 'mysql' && $pdo->inTransaction()) {
+        $pdo->rollBack();
     }
 
-    $documents = [];
-    foreach (glob(fm_reference_dir() . '/*.json') ?: [] as $path) {
-        $documents[basename($path, '.json')] = $path;
-    }
-    foreach (glob(fm_save_dir() . '/tactics/*.json') ?: [] as $path) {
-        $documents['tactics/' . basename($path, '.json')] = $path;
-    }
-    ksort($documents);
-
-    return $documents;
-}
-
-/** Describe a JSON node without returning it: type, size, and the keys below it. */
-function fm_reference_outline(mixed $node): array
-{
-    if (is_array($node) && $node !== [] && !array_is_list($node)) {
-        $sections = [];
-        foreach ($node as $key => $value) {
-            $sections[] = [
-                'key' => (string) $key,
-                'type' => is_array($value) ? (array_is_list($value) ? 'list' : 'object') : get_debug_type($value),
-                'size_chars' => strlen((string) json_encode($value)),
-            ];
-        }
-
-        return ['type' => 'object', 'sections' => $sections];
-    }
-
-    if (is_array($node)) {
-        return ['type' => 'list', 'length' => count($node)];
-    }
-
-    return ['type' => get_debug_type($node)];
+    return $rows;
 }
 
 /**
- * Read a reference document, optionally drilling into a dot-separated section path.
+ * Read a reference document, drill into a section path, or search for a keyword.
+ *
+ * A path is the dot-joined chain of keys from the document name down. Keys are used
+ * verbatim, so one containing a dot still addresses correctly: the stored path is
+ * matched as a whole rather than split apart.
  */
-function fm_reference_get(?string $document, ?string $section): array
+function fm_reference_get(?string $document, ?string $section, ?string $search): array
 {
-    $documents = fm_reference_documents();
+    $pdo = fm_pdo_ro();
 
-    if ($document === null || $document === '') {
-        $catalogue = [];
-        foreach ($documents as $name => $path) {
-            $payload = json_decode((string) file_get_contents($path), true);
-            $catalogue[] = [
-                'document' => $name,
-                'size_chars' => (int) filesize($path),
-                'top_level' => array_keys(is_array($payload) ? $payload : []),
+    try {
+        if ($search !== null && $search !== '') {
+            // Smallest match first: every ancestor of a hit also contains the term,
+            // so the narrowest node is the one that actually answers the question.
+            $stmt = $pdo->prepare(
+                'SELECT document, path, title, text FROM fm_reference
+                  WHERE text LIKE ? ORDER BY LENGTH(text), path LIMIT 25'
+            );
+            $stmt->execute(['%' . $search . '%']);
+            $matches = [];
+            foreach ($stmt->fetchAll() as $row) {
+                $position = stripos($row['text'], $search);
+                $matches[] = [
+                    'document' => $row['document'],
+                    'path' => $row['path'],
+                    'title' => $row['title'],
+                    'excerpt' => mb_substr($row['text'], max(0, (int) $position - 60), 240),
+                ];
+            }
+
+            return [
+                'search' => $search,
+                'match_count' => count($matches),
+                'matches' => $matches,
+                'note' => 'Request one of these paths as "section" to read it in full.',
             ];
         }
 
-        return [
-            'documents' => $catalogue,
-            'note' => 'Call this tool again with "document" set to one of these names, '
-                . 'and "section" to drill into it with a dot-separated path.',
-        ];
-    }
+        if ($document === null || $document === '') {
+            return [
+                'documents' => fm_reference_documents(),
+                'note' => 'Call again with "document" and a "section" path, or with "search" '
+                    . 'to find a section by keyword. A path starts with the document name.',
+            ];
+        }
 
-    if (!isset($documents[$document])) {
-        throw new FmMcpError(
-            sprintf('Unknown document "%s". Available: %s', $document, implode(', ', array_keys($documents))),
-            -32602
-        );
-    }
+        $path = $section !== null && $section !== '' ? $section : $document;
+        $stmt = $pdo->prepare('SELECT text FROM fm_reference WHERE document = ? AND path = ?');
+        $stmt->execute([$document, $path]);
+        $text = $stmt->fetchColumn();
 
-    $payload = json_decode((string) file_get_contents($documents[$document]), true);
-    if (!is_array($payload)) {
-        throw new FmMcpError("The document \"{$document}\" could not be read as JSON.");
-    }
-
-    $node = $payload;
-    $walked = [];
-    foreach (array_filter(explode('.', (string) $section), static fn ($p) => $p !== '') as $part) {
-        if (!is_array($node) || !array_key_exists($part, $node)) {
+        if ($text === false) {
+            $stmt = $pdo->prepare(
+                'SELECT path FROM fm_reference WHERE document = ? ORDER BY LENGTH(path), path LIMIT 40'
+            );
+            $stmt->execute([$document]);
+            $available = array_column($stmt->fetchAll(), 'path');
             throw new FmMcpError(
-                sprintf(
-                    'Section "%s" does not exist in "%s". Available at %s: %s',
-                    $section,
-                    $document,
-                    $walked === [] ? 'the top level' : implode('.', $walked),
-                    is_array($node) ? implode(', ', array_keys($node)) : '(not an object)'
-                ),
+                $available === []
+                    ? sprintf('No document "%s" in the reference.', $document)
+                    : sprintf(
+                        'No section "%s" in "%s". Available paths include: %s',
+                        $path,
+                        $document,
+                        implode(', ', $available)
+                    ),
                 -32602
             );
         }
-        $node = $node[$part];
-        $walked[] = $part;
-    }
 
-    $encoded = (string) json_encode($node);
-    if (strlen($encoded) > FM_REFERENCE_MAX_CHARS) {
+        $encoded = (string) $text;
+        if (strlen($encoded) > FM_REFERENCE_MAX_CHARS) {
+            $stmt = $pdo->prepare(
+                'SELECT path, title, LENGTH(text) AS size_chars FROM fm_reference
+                  WHERE document = ? AND path LIKE ? AND path <> ? ORDER BY LENGTH(path), path'
+            );
+            $stmt->execute([$document, $path . '.%', $path]);
+
+            return [
+                'document' => $document,
+                'section' => $path,
+                'source' => 'database',
+                'truncated' => true,
+                'sections' => $stmt->fetchAll(),
+                'note' => sprintf(
+                    'This section is %d characters, above the %d character response limit. '
+                    . 'Request one of the listed paths instead.',
+                    strlen($encoded),
+                    FM_REFERENCE_MAX_CHARS
+                ),
+            ];
+        }
+
         return [
             'document' => $document,
-            'section' => implode('.', $walked) ?: null,
-            'truncated' => true,
-            'outline' => fm_reference_outline($node),
-            'note' => sprintf(
-                'This section is %d characters, above the %d character response limit. '
-                . 'Request one of the keys listed in "outline" as a deeper "section" path.',
-                strlen($encoded),
-                FM_REFERENCE_MAX_CHARS
-            ),
+            'section' => $path,
+            'source' => 'database',
+            'truncated' => false,
+            'content' => json_decode($encoded, true),
         ];
+    } finally {
+        if (fm_driver() === 'mysql' && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
     }
-
-    return [
-        'document' => $document,
-        'section' => implode('.', $walked) ?: null,
-        'truncated' => false,
-        'content' => $node,
-    ];
 }
 
 function fm_tool_definitions(): array
 {
     $importTables = fm_import_tables();
     $tableList = implode(', ', array_keys($importTables));
-    $documentList = implode(', ', array_keys(fm_reference_documents()));
+    // Named rather than queried: describing the tools must not depend on the
+    // database being reachable.
+    $documentList = 'fm26_ai_system_prompt_v4, fm26_role_locale_hu';
 
     return [
         [
@@ -304,7 +296,16 @@ function fm_tool_definitions(): array
                     ],
                     'section' => [
                         'type' => 'string',
-                        'description' => 'Dot-separated path into the document, e.g. "A.B.C". Omit for the whole document.',
+                        'description' =>
+                            'Dot-joined path into the document, starting with the document name, '
+                            . 'e.g. "fm26_ai_system_prompt_v4.FM26_AI_SYSTEM_PROMPT.0_critical_fm26_changes". '
+                            . 'Omit for the whole document.',
+                    ],
+                    'search' => [
+                        'type' => 'string',
+                        'description' =>
+                            'Keyword to find across the whole reference. Returns matching paths '
+                            . 'with an excerpt; read one in full by passing it as "section".',
                     ],
                 ],
                 'additionalProperties' => false,
@@ -377,7 +378,12 @@ function fm_call_tool(string $name, array $arguments): array
                 throw new FmMcpError('The "section" argument must be a string.', -32602);
             }
 
-            return fm_tool_result(fm_reference_get($document, $section));
+            $search = $arguments['search'] ?? null;
+            if ($search !== null && !is_string($search)) {
+                throw new FmMcpError('The "search" argument must be a string.', -32602);
+            }
+
+            return fm_tool_result(fm_reference_get($document, $section, $search));
 
         default:
             throw new FmMcpError("Unknown tool: {$name}", -32602);
