@@ -169,11 +169,22 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST \
 
 ## Why there is an OAuth layer
 
-claude.ai always runs the OAuth 2.1 discovery and dynamic client registration sequence
-against a custom connector, and refuses to connect when the discovery documents 404 —
-the connector form has no "this server needs no authorization" option. So the server
-answers an unauthenticated request with 401 and a `WWW-Authenticate` header, and serves
-the endpoints the client then walks through:
+The connector runs an OAuth 2.1 discovery and dynamic client registration sequence, so
+the server offers the whole flow. `require_bearer` decides whether it is compulsory:
+
+- **`false`** (the setting that works with claude.ai) — a request on the secret path is
+  served whether or not it carries a token, and the OAuth endpoints stay available for
+  a client that wants them.
+- **`true`** — an unauthenticated request gets 401 with a `WWW-Authenticate` header
+  pointing at the resource metadata.
+
+claude.ai never follows that challenge. Answered with 401 it stops after a single
+request and reports that it could not register, without ever fetching the metadata the
+header points at; answered with 200 it connects immediately. Nothing is weakened by
+serving unauthenticated requests, because the token was never the credential — the
+secret path is, and it is checked first on every request.
+
+The endpoints, in the order a client walks through them:
 
 | Route | Purpose |
 |---|---|
@@ -185,6 +196,9 @@ the endpoints the client then walks through:
 
 There is no consent screen and no login, because the capability URL already decides who
 may connect: a token is worthless unless the request also arrives on the secret path.
+
+Both the bare host and its `www` name serve the same files, and every OAuth URL is
+built from the host of the incoming request, so either works as a connector address.
 
 Nothing is stored. Client identifiers, authorization codes and tokens are payloads
 signed with the capability secret, so they verify by recomputation — rebuilding the

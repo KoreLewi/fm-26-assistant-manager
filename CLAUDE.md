@@ -35,12 +35,17 @@ file on a public web server until `.htaccess` says otherwise.
    `FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --info`
 5. **Never log the MCP request path** — it carries the secret. That is why access
    logging is switched off for `/mcp/` in the server configuration.
-6. **The OAuth layer exists for the client, not for security.** claude.ai refuses to
-   connect to a server that does not run the discovery and registration sequence, so
-   `mcp/oauth.php` serves it. The capability URL is still what grants access, and every
-   OAuth artefact is a payload signed with that secret rather than stored state — so a
-   database rebuild keeps the connector working and rotating the secret cuts every token.
-7. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
+6. **The OAuth layer exists for the client, not for security.** `mcp/oauth.php` serves
+   the whole discovery and registration flow, and `require_bearer` decides whether a
+   token is compulsory. It is **false**: claude.ai never follows a 401 challenge — it
+   stops after one request and reports a registration failure — but connects at once
+   when the endpoint answers. The capability URL is what grants access either way, and
+   every OAuth artefact is a payload signed with that secret rather than stored state,
+   so a database rebuild keeps the connector working and rotating the secret cuts every
+   token.
+7. **Tracing is a debugging aid, not a default.** `trace` writes a line per request,
+   readable at `bootstrap.php?token=<secret>&trace=1`. Leave it off.
+8. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
    historical snapshots are never overwritten, unreadable values are stored as `NULL`
    rather than guessed, and inferences are marked as inferences.
 
