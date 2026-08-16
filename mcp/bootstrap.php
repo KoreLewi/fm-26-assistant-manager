@@ -462,14 +462,22 @@ if (($_GET['logs'] ?? '') !== '') {
     $needle = (string) $_GET['logs'];
     $home = dirname((string) ($_SERVER['DOCUMENT_ROOT'] ?? '/home'));
     $host = (string) ($_SERVER['HTTP_HOST'] ?? 'fm.kplev.hu');
-    $candidates = [
-        $home . '/access-logs/' . $host,
-        $home . '/access-logs/' . $host . '-ssl_log',
-        $home . '/logs/' . $host . '.log',
-        $home . '/logs/php.error.log',
-        '/usr/local/apache/domlogs/' . $host,
-        '/var/log/apache2/access_log',
-    ];
+
+    // HTTPS traffic is logged separately from port 80, and the file naming differs by
+    // panel and server, so every plausible location is collected rather than guessed.
+    $candidates = [$home . '/logs/php.error.log'];
+    foreach ([
+        $home . '/access-logs/*',
+        $home . '/logs/*' . $host . '*',
+        '/usr/local/apache/domlogs/*' . $host . '*',
+        '/usr/local/apache/domlogs/' . basename($home) . '/*',
+        '/var/log/apache2/*access*',
+    ] as $pattern) {
+        foreach (glob($pattern) ?: [] as $match) {
+            $candidates[] = $match;
+        }
+    }
+    $candidates = array_values(array_unique($candidates));
 
     foreach ($candidates as $candidate) {
         echo str_pad($candidate, 60), is_readable($candidate) ? 'readable' : 'not readable', "\n";
