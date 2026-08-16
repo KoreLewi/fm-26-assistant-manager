@@ -241,7 +241,11 @@ function fm_source_files(): array
 {
     $root = fm_save_dir();
     if (!is_dir($root)) {
-        throw new FmMcpError("The save directory {$root} does not exist.");
+        // A career the connector will fill from nothing has no files yet. The directory
+        // is created so there is somewhere to write them.
+        if (!mkdir($root, 0750, true) && !is_dir($root)) {
+            throw new FmMcpError("Cannot create the save directory {$root}.");
+        }
     }
 
     $sources = glob($root . '/*.json.gz.b64') ?: [];
@@ -380,7 +384,11 @@ function fm_bootstrap(bool $force, bool $resetOnly = false): array
 
     $sources = fm_source_files();
     if ($sources === []) {
-        throw new FmMcpError("No source files found under {$root}/data.");
+        $lines[] = sprintf(
+            'Career "%s" starts empty: no files under data/saves/%s. The connector fills it.',
+            fm_active_save(),
+            fm_active_save()
+        );
     }
 
     $pdo->beginTransaction();

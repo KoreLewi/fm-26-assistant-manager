@@ -393,17 +393,28 @@ That makes the two questions joinable in one query - is the role recorded for th
 player legal for his position, does the tactic assign a role the game does not offer -
 and it makes a career removable in one operation.
 
-## Switching careers
+## Starting or switching a career
 
-The database holds exactly one career. The others stay in the repository, unloaded.
+The database holds one career at a time, named by `active_save` in `mcp/config.php`.
 
-1. Put the new career's files in `data/saves/<slug>/`.
-2. Set `'active_save' => '<slug>'` in `mcp/config.php`.
-3. Rebuild: `POST https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=rebuild&force=1`
+**A new career needs no files.** Set `active_save` to a new name and rebuild: the FM26
+reference loads, the career starts empty, and the assistant fills it through the
+connector from the first screenshot onwards.
 
-`&confirm=reset` drops and reloads only the career tables and leaves the `fm_` tables
-untouched. Nothing in the MCP connector can switch, reset or delete a career; that
-needs the capability token.
+```php
+'active_save' => 'milan-2026-27',
+```
+
+```bash
+curl -X POST 'https://<host>/mcp/bootstrap.php?token=<secret>&confirm=rebuild&force=1'
+```
+
+The FM26 rules survive every career: they describe the game, not the save, and the
+`fm_` tables they live in are never dropped by `&confirm=reset`.
+
+Careers seeded from committed files - as `valencia-2025-26` was, from captures made
+before the connector existed - still load the same way. A new one simply has nothing to
+seed from.
 
 ## Roadmap
 
