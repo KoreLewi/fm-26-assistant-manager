@@ -270,7 +270,9 @@ function fm_bootstrap(bool $force): array
             throw new FmMcpError("The database directory {$dir} is not writable by PHP.");
         }
 
-        $webRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: null;
+        // DOCUMENT_ROOT only describes what a request can reach, so the check belongs to
+        // the web SAPI; on the command line the variable may hold anything.
+        $webRoot = PHP_SAPI === 'cli' ? null : (realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: null);
         $dbReal = realpath($dir);
         if ($webRoot !== null && $dbReal !== false && str_starts_with($dbReal . '/', $webRoot . '/')) {
             throw new FmMcpError(
