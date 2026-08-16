@@ -160,6 +160,7 @@ afterwards, so it is order-independent:
 
 ```bash
 php mcp/bootstrap.php --sqlite=fm26.sqlite3 --force
+# Add --save=<slug> once the repository holds more than one career.
 ```
 
 The binary `fm26.sqlite3` is in `.gitignore` and is rebuilt from JSON in well under a

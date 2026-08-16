@@ -62,6 +62,7 @@ php mcp/server.php --token                             # a bearer token for test
 FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --info    # host and connection report
 FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --force   # rebuild on MySQL
 php mcp/bootstrap.php --sqlite=/tmp/check.sqlite3 --force        # rebuild on SQLite
+#   add --save=<slug> when more than one career is in the repository
 python3 scripts/compare_databases.py fm26.sqlite3 /tmp/check.sqlite3
 
 python3 scripts/verify_db.py

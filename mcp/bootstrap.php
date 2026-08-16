@@ -20,8 +20,9 @@
  *
  * CLI:  php mcp/bootstrap.php [--force] [--info] [--reset]
  *        --reset drops and reloads only the career; the fm_ tables are left alone.
- *       php mcp/bootstrap.php --sqlite=/path/to/fm26.sqlite3 [--force]
- *         builds without mcp/config.php, for a local rebuild or in CI.
+ *       php mcp/bootstrap.php --sqlite=/path/to/fm26.sqlite3 [--force] [--save=<slug>]
+ *         builds without mcp/config.php, for a local rebuild or in CI. --save is only
+ *         needed when the repository holds more than one career.
  * HTTP: POST https://host/mcp/bootstrap.php?token=<secret>&confirm=rebuild
  *       GET  https://host/mcp/bootstrap.php?token=<secret>&info=1
  */
@@ -36,6 +37,32 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/reference.php';
 require_once __DIR__ . '/tactic.php';
 require_once __DIR__ . '/oauth.php';
+
+/**
+ * The single career in the repository, for builds that were not told which to load.
+ *
+ * With one career there is nothing to choose; with several, choosing for the caller
+ * would silently load the wrong one.
+ */
+function fm_only_save(string $root): string
+{
+    $directories = array_values(array_filter(
+        glob($root . '/data/saves/*') ?: [],
+        'is_dir'
+    ));
+    if (count($directories) === 1) {
+        return basename($directories[0]);
+    }
+    if ($directories === []) {
+        throw new FmMcpError('No career found under data/saves/.');
+    }
+
+    throw new FmMcpError(sprintf(
+        'The repository holds %d careers (%s). Name one with --save=<slug>.',
+        count($directories),
+        implode(', ', array_map('basename', $directories))
+    ));
+}
 
 /** Host facts needed to diagnose an install without shell access. */
 function fm_host_report(): array
@@ -454,18 +481,33 @@ if (PHP_SAPI === 'cli') {
     $force = in_array('--force', $argv ?? [], true);
     $resetOnly = in_array('--reset', $argv ?? [], true);
 
-    // --sqlite builds without config.php, for a local rebuild or in CI.
+    // --sqlite builds without config.php, for a local rebuild or in CI. It still has to
+    // know which career to load: --save names it, and when the repository holds exactly
+    // one there is nothing to choose.
+    $requestedSave = null;
     foreach ($argv ?? [] as $argument) {
-        if (str_starts_with($argument, '--sqlite=')) {
+        if (str_starts_with($argument, '--save=')) {
+            $requestedSave = substr($argument, 7);
+        }
+    }
+    try {
+        foreach ($argv ?? [] as $argument) {
+            if (!str_starts_with($argument, '--sqlite=')) {
+                continue;
+            }
             fm_config_set([
                 'driver' => 'sqlite',
                 'db_path' => substr($argument, 9),
                 'secret' => str_repeat('0', 64),
+                'active_save' => $requestedSave ?? fm_only_save(dirname(__DIR__)),
                 'max_rows' => 500,
                 'log_file' => null,
                 'repo_root' => dirname(__DIR__),
             ]);
         }
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
     }
 
     if (in_array('--info', $argv ?? [], true)) {
