@@ -1,8 +1,13 @@
 # FM26 Assistant Manager
 
 Persistent data layer for a Football Manager 2026 save, used by Claude acting as an
-assistant manager. The repository is the **single source of truth**: nothing may be
-recalled from chat memory or a previous save.
+assistant manager. The database is where the save lives: nothing may be recalled from
+chat memory or from a previous career.
+
+This repository holds the code, the FM26 reference, and the data captured before the
+connector existed - enough to build the database from nothing. Everything recorded since
+is written through the connector into the hosted database, which the host backs up
+daily. Data does not come back here.
 
 Two readers use this file. **"Using it"** is the manager's guide: adding the connector,
 the loop while you play, what to ask, what to fix when something looks wrong.
@@ -15,9 +20,12 @@ how the thing is built.
 **Screenshot / manual input → structured JSON → database → SQL query → tactical analysis**
 
 Raw facts are kept separately from interpretations. Historical records are never
-overwritten. The database is *generated*, not stored — the committed JSON is the real
-data. It is rebuilt from those files in under a second, on MySQL for the hosted MCP
-server and on SQLite for local work.
+overwritten: a new in-game date is a new row.
+
+The committed JSON seeds the database and can rebuild it from nothing, on MySQL for the
+hosted server and on SQLite for local work. What the connector writes afterwards lives
+in the database and in the payload files it leaves beside the save on the host, which is
+what makes a rebuild replay rather than erase.
 
 ## Using it
 
@@ -76,20 +84,18 @@ Questions that need the squad, the matches and the FM26 rule set at the same tim
 
 ### Housekeeping
 
-Data recorded through the connector lands on the host. Bring it back and commit it so
-the repository stays the source of truth:
+Nothing routine. Recorded data goes into the hosted database and stays there; the host's
+daily backup is what protects it.
 
-```bash
-curl 'https://<host>/mcp/bootstrap.php?token=<secret>&pull=1' > /tmp/incoming.json
-# review it, then save the payloads under data/saves/<slug>/ and commit
-```
-
-Rebuilding the hosted database is safe at any time - it is generated from the committed
-files and from whatever the connector wrote since:
+Rebuilding is safe at any time. It replays the committed files and then everything the
+connector has written since, so it restores rather than resets:
 
 ```bash
 curl -X POST 'https://<host>/mcp/bootstrap.php?token=<secret>&confirm=rebuild&force=1'
 ```
+
+`&confirm=reset` does the same for the career alone and leaves the FM26 reference
+untouched. Both need the token; neither is reachable from the connector.
 
 ### When something looks wrong
 

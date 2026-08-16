@@ -134,7 +134,7 @@ curl -X POST 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=rebui
 # Reload only the career and leave the FM26 rules alone:
 curl -X POST 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=reset'
 
-# Fetch what import_json wrote on the host since the last commit:
+# See what import_json has written on the host:
 curl 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&pull=1'
 ```
 

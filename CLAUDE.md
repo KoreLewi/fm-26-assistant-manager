@@ -6,8 +6,10 @@ here.
 
 ## What this is
 
-A Football Manager 2026 save kept as structured data. The committed JSON is the real
-data; the database is generated from it and is disposable. Two importers build the same
+A Football Manager 2026 save kept as structured data. The committed JSON seeds the
+database and can rebuild it from nothing; everything recorded since the connector went
+live is written through it into the hosted database and stays there. Data is not
+brought back into this repository. Two importers build the same
 database from the same payload:
 
 - **Python** (`scripts/*.py`) → SQLite. The local path, and the contract of record.
@@ -48,10 +50,14 @@ file on a public web server until `.htaccess` says otherwise.
    put a rule that is true of the game into a career table.
 8. **Tracing is a debugging aid, not a default.** `trace` writes a line per request,
    readable at `bootstrap.php?token=<secret>&trace=1`. Leave it off.
-9. **The connector has no memory.** Every conversation starts blank; `session_log` is
+9. **Never commit data the connector recorded.** The repository seeds the database and
+   holds the code; once the connector is live, what it records stays in the hosted
+   database, which the host backs up daily. Copying it back here creates a second copy
+   that immediately starts drifting.
+10. **The connector has no memory.** Every conversation starts blank; `session_log` is
    the only thread across them. `save_state` returns it as a briefing and `session_note`
    writes to it, so a step nobody wrote down is a step the next conversation cannot see.
-10. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
+11. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
    historical snapshots are never overwritten, unreadable values are stored as `NULL`
    rather than guessed, and inferences are marked as inferences.
 
