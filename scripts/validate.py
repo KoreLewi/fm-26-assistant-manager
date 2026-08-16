@@ -27,6 +27,11 @@ CHECKS = {
         FROM player_attributes
         WHERE value < 1 OR value > 20
     """,
+    "attribute_category_casing": """
+        SELECT DISTINCT attribute_category
+        FROM player_attributes
+        WHERE attribute_category NOT IN ('technical', 'mental', 'physical', 'goalkeeping')
+    """,
     "missing_pass_map_players": """
         SELECT pm.match_id, pm.shirt_number_at_match, pm.player_id
         FROM pass_map_nodes pm

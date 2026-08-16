@@ -76,14 +76,17 @@ CREATE TABLE IF NOT EXISTS player_attributes (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     player_id INT NOT NULL,
     game_date VARCHAR(32) NOT NULL,
-    attribute_category VARCHAR(64) NOT NULL,
+    -- A controlled vocabulary, so the column compares exactly: the table's
+    -- case-insensitive collation would let the CHECK accept any capitalisation.
+    attribute_category VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
     attribute_name VARCHAR(128) NOT NULL,
     value INT NOT NULL,
     source TEXT,
     UNIQUE KEY uq_attributes_player_date_name (player_id, game_date, attribute_name),
     KEY idx_attributes_player_date (player_id, game_date),
     CONSTRAINT fk_attributes_player FOREIGN KEY (player_id) REFERENCES players(id),
-    CONSTRAINT chk_attribute_value CHECK (value BETWEEN 1 AND 20)
+    CONSTRAINT chk_attribute_value CHECK (value BETWEEN 1 AND 20),
+    CONSTRAINT chk_attribute_category CHECK (attribute_category IN ('technical','mental','physical','goalkeeping'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS player_roles (

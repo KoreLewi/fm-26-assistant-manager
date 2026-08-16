@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS player_attributes (
     attribute_name TEXT NOT NULL,
     value INTEGER NOT NULL CHECK(value BETWEEN 1 AND 20),
     source TEXT,
+    CHECK(attribute_category IN ('technical', 'mental', 'physical', 'goalkeeping')),
     FOREIGN KEY(player_id) REFERENCES players(id),
     UNIQUE(player_id, game_date, attribute_name)
 );
