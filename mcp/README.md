@@ -9,6 +9,7 @@ an older PHP or without those extensions, with a plain message saying which is m
 ```
 mcp/
   server.php          entry point: authentication, JSON-RPC dispatch, --selftest
+  oauth.php           the OAuth 2.1 layer the connector insists on
   tools.php           the five tool definitions and their handlers
   db.php              connections, the read-only guard, the SQL guard, the importer
   bootstrap.php       builds the database on the host from db/ and data/
@@ -26,6 +27,7 @@ mcp/
 | Transport | Streamable HTTP: one JSON-RPC 2.0 message per POST, answered as `application/json`. SSE is not offered; `GET` returns 405. |
 | Authentication | Capability URL — the secret is a path segment: `https://host/mcp/<secret>/`. Compared with `hash_equals`. |
 | Wrong secret | HTTP 404, not 401, so the endpoint's existence is never confirmed. |
+| OAuth | A request on the right path without a bearer token gets 401 and the discovery sequence below. The client requires it; the secret path is still what grants access. |
 | Reads | A separate connection put into `START TRANSACTION READ ONLY` (SQLite: `PRAGMA query_only`). The engine refuses every write on it, including DDL. |
 | Writes | Only through `import_json`, in one transaction, rolled back completely on any error. |
 | Credentials | In `config.php`, which is not in git and is denied over HTTP. |
@@ -142,20 +144,55 @@ Then check the live endpoint:
 
 ```bash
 URL="https://fm.kplev.hu/mcp/<secret>/"
-curl -s -X POST "$URL" -H 'Content-Type: application/json' \
+
+# Without a bearer token: 401 with the WWW-Authenticate header that starts discovery.
+curl -s -D - -o /dev/null -X POST "$URL"
+
+# Mint a token for testing by hand rather than walking the browser flow.
+TOKEN=$(php mcp/server.php --token)
+AUTH="Authorization: Bearer $TOKEN"
+
+curl -s -X POST "$URL" -H "$AUTH" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}'
-curl -s -X POST "$URL" -H 'Content-Type: application/json' \
+curl -s -X POST "$URL" -H "$AUTH" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-curl -s -X POST "$URL" -H 'Content-Type: application/json' \
+curl -s -X POST "$URL" -H "$AUTH" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"query","arguments":{"sql":"SELECT name FROM players LIMIT 5"}}}'
-curl -s -X POST "$URL" -H 'Content-Type: application/json' \
+curl -s -X POST "$URL" -H "$AUTH" -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"query","arguments":{"sql":"DROP TABLE players"}}}'
 # expected: isError true
 
 curl -s -o /dev/null -w '%{http_code}\n' -X POST \
   "https://fm.kplev.hu/mcp/0000000000000000000000000000000000000000000000000000000000000000/"
-# expected: 404
+# expected: 404 - a wrong secret is not even told that it is unauthorized
 ```
+
+## Why there is an OAuth layer
+
+claude.ai always runs the OAuth 2.1 discovery and dynamic client registration sequence
+against a custom connector, and refuses to connect when the discovery documents 404 —
+the connector form has no "this server needs no authorization" option. So the server
+answers an unauthenticated request with 401 and a `WWW-Authenticate` header, and serves
+the endpoints the client then walks through:
+
+| Route | Purpose |
+|---|---|
+| `GET /.well-known/oauth-protected-resource[/mcp/<secret>]` | RFC 9728 resource metadata |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 server metadata |
+| `POST /oauth/register` | RFC 7591 dynamic client registration |
+| `GET /oauth/authorize` | Issues a code and redirects back with 303 |
+| `POST /oauth/token` | Exchanges the code with PKCE for a bearer token |
+
+There is no consent screen and no login, because the capability URL already decides who
+may connect: a token is worthless unless the request also arrives on the secret path.
+
+Nothing is stored. Client identifiers, authorization codes and tokens are payloads
+signed with the capability secret, so they verify by recomputation — rebuilding the
+database does not disconnect the connector, and rotating the secret invalidates every
+token at once, which is the point of rotating it.
+
+The `Authorization` header has to reach PHP for any of this to work. `mcp/.htaccess`
+forwards it, since CGI and LiteSpeed drop it by default.
 
 ### 7. Add the connector in Claude
 
@@ -203,7 +240,13 @@ location = /mcp/bootstrap.php {
     include       fastcgi_params;
 }
 
-location ~ ^/mcp/(config|config\.local|config\.example|db|tools)\.php$ { return 404; }
+location ~ ^/(\.well-known/oauth-protected-resource|\.well-known/oauth-authorization-server|oauth/(register|authorize|token))(/.*)?$ {
+    fastcgi_pass  unix:/run/php/php8.2-fpm.sock;
+    fastcgi_param SCRIPT_FILENAME /home/kplev/fm.kplev.hu/mcp/oauth.php;
+    include       fastcgi_params;
+}
+
+location ~ ^/mcp/(config|config\.local|config\.example|db|tools|oauth)\.php$ { return 404; }
 location ~ ^/(\.git|\.github|data|db|scripts)/ { return 404; }
 ```
 
@@ -217,7 +260,8 @@ when `MCP_PATH_TOKEN` is not set.
 2. Replace `secret` in `mcp/config.php` and let the sync carry it to the host.
 3. Update the connector URL in Claude.
 
-The old URL stops working the moment the host has the new file; nothing else changes.
+The old URL stops working the moment the host has the new file, and every issued bearer
+token stops verifying with it, so the connector has to be re-added. Nothing else changes.
 Rotate whenever the URL may have been seen by anyone else — a shared screenshot, a
 pasted link, a proxy log.
 

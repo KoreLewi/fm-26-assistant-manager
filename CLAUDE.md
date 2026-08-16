@@ -35,14 +35,20 @@ file on a public web server until `.htaccess` says otherwise.
    `FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --info`
 5. **Never log the MCP request path** — it carries the secret. That is why access
    logging is switched off for `/mcp/` in the server configuration.
-6. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
+6. **The OAuth layer exists for the client, not for security.** claude.ai refuses to
+   connect to a server that does not run the discovery and registration sequence, so
+   `mcp/oauth.php` serves it. The capability URL is still what grants access, and every
+   OAuth artefact is a payload signed with that secret rather than stored state — so a
+   database rebuild keeps the connector working and rotating the secret cuts every token.
+7. The FM26 data rules in `README.md` ("Critical data rules") are not negotiable:
    historical snapshots are never overwritten, unreadable values are stored as `NULL`
    rather than guessed, and inferences are marked as inferences.
 
 ## Verify before calling anything done
 
 ```bash
-php mcp/server.php --selftest                          # protocol, tools, SQL guard, imports
+php mcp/server.php --selftest                          # protocol, tools, SQL guard, imports, OAuth
+php mcp/server.php --token                             # a bearer token for testing by hand
 FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --info    # host and connection report
 FM26_CONFIG=mcp/config.local.php php mcp/bootstrap.php --force   # rebuild on MySQL
 php mcp/bootstrap.php --sqlite=/tmp/check.sqlite3 --force        # rebuild on SQLite
@@ -63,7 +69,7 @@ data/                committed source JSON — the real data
 db/schema.sql        SQLite schema (Python path)
 db/schema.mysql.sql  MySQL schema (hosted path) — same tables, engine-specific types
 scripts/             Python importers, validators, and the build comparison
-mcp/                 PHP MCP server (server, tools, db, bootstrap, config)
+mcp/                 PHP MCP server (server, oauth, tools, db, bootstrap, config)
 .htaccess            blocks HTTP access to everything except mcp/
 env                  FTP credentials — gitignored
 ```

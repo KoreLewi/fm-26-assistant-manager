@@ -6,11 +6,12 @@ recalled from chat memory or a previous save.
 
 ## Principle
 
-**Screenshot / manual input → structured JSON → SQLite → SQL query → tactical analysis**
+**Screenshot / manual input → structured JSON → database → SQL query → tactical analysis**
 
 Raw facts are kept separately from interpretations. Historical records are never
-overwritten. The SQLite file is *generated*, not stored — the committed JSON is the
-real data.
+overwritten. The database is *generated*, not stored — the committed JSON is the real
+data. It is rebuilt from those files in under a second, on MySQL for the hosted MCP
+server and on SQLite for local work.
 
 ## Working through the MCP connector
 
@@ -109,9 +110,10 @@ scripts/
   compare_databases.py             Compare two builds of the database row by row
 mcp/                               Remote MCP server (PHP) — see mcp/README.md
   server.php                       Entry point: auth, JSON-RPC dispatch, --selftest
-  tools.php                        query / list_tables / import_json / save_state
-  db.php                           PDO helpers, read-only connection, importer
-  bootstrap.php                    Build the SQLite file on the host from db/ and data/
+  oauth.php                        The OAuth 2.1 layer the connector requires
+  tools.php                        query / list_tables / import_json / save_state / reference
+  db.php                           Connections, read-only guard, SQL guard, importer
+  bootstrap.php                    Build the database on the host from db/ and data/
 .github/workflows/validate.yml     CI: build, import, verify, validate on every push
 ```
 
@@ -140,7 +142,7 @@ without an explicit file list — it defers foreign keys for the load and checks
 afterwards, so it is order-independent:
 
 ```bash
-php mcp/bootstrap.php --db=fm26.sqlite3 --force
+php mcp/bootstrap.php --sqlite=fm26.sqlite3 --force
 ```
 
 The binary `fm26.sqlite3` is in `.gitignore` and is rebuilt from JSON in well under a
@@ -230,8 +232,9 @@ names, and records the raw observed lists as source facts.
 conversation reads and writes this data directly instead of rebuilding the database
 from a downloaded copy of the repository. It exposes five tools — `query`,
 `list_tables`, `import_json`, `save_state`, `reference` — over Streamable HTTP,
-authenticated by a secret in the URL path. How to use them is described under
-"Working through the MCP connector" above.
+authenticated by a secret in the URL path, wrapped in the OAuth 2.1 handshake the
+connector requires. How to use them is described under "Working through the MCP
+connector" above.
 
 The hosted database is **MySQL** (`db/schema.mysql.sql`), built on the host by
 `mcp/bootstrap.php` from the same committed JSON. Reads run inside a read-only

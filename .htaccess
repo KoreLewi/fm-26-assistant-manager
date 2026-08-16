@@ -20,6 +20,17 @@
 
 Options -Indexes
 
+# OAuth endpoints. The client discovers them at the origin root, so they are routed
+# from here into mcp/oauth.php rather than living under /mcp/.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteRule ^\.well-known/oauth-protected-resource(/.*)?$ mcp/oauth.php [E=FM_OAUTH_ROUTE:protected-resource,QSA,L]
+    RewriteRule ^\.well-known/oauth-authorization-server(/.*)?$ mcp/oauth.php [E=FM_OAUTH_ROUTE:authorization-server,QSA,L]
+    RewriteRule ^\.well-known/openid-configuration$ mcp/oauth.php [E=FM_OAUTH_ROUTE:authorization-server,QSA,L]
+    RewriteRule ^oauth/(register|authorize|token)/?$ mcp/oauth.php [E=FM_OAUTH_ROUTE:$1,QSA,L]
+</IfModule>
+
 # Repository directories.
 RedirectMatch 404 ^/(?:\.git|\.github|\.idea|\.vscode|data|db|scripts)(?:/|$)
 

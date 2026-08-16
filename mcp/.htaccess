@@ -7,9 +7,18 @@
 
 Options -Indexes
 
+# CGI and LiteSpeed drop the Authorization header unless it is passed through, and the
+# bearer token the client sends arrives in it.
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /mcp/
+
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
     # Real files (server.php, bootstrap.php) keep resolving normally.
     RewriteCond %{REQUEST_FILENAME} !-f

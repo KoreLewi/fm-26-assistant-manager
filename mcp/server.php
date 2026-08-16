@@ -21,6 +21,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/tools.php';
+require_once __DIR__ . '/oauth.php';
 
 const FM_MCP_SERVER_NAME = 'fm26-assistant-manager';
 const FM_MCP_SERVER_VERSION = '1.0.0';
@@ -127,6 +128,24 @@ function fm_auth_ok(string $token): bool
     }
 
     return hash_equals($secret, $token);
+}
+
+/**
+ * Ask for a bearer token, pointing at the resource metadata as RFC 9728 requires.
+ *
+ * The capability URL is what actually authorises a request; this exists because the
+ * client refuses to speak to a server that does not start an OAuth flow.
+ */
+function fm_send_unauthorized(): void
+{
+    http_response_code(401);
+    header(sprintf(
+        'WWW-Authenticate: Bearer realm="fm26", resource_metadata="%s"',
+        fm_oauth_resource_metadata_url()
+    ));
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(fm_rpc_error(null, -32001, 'Authorization required.'));
 }
 
 /** Send a 404 that reveals nothing about the endpoint. */
@@ -270,6 +289,7 @@ function fm_handle_http(): void
 {
     fm_register_fatal_handler();
 
+    // The path secret comes first: without it the endpoint does not exist at all.
     if (!fm_auth_ok(fm_request_token())) {
         fm_send_not_found();
 
@@ -277,6 +297,12 @@ function fm_handle_http(): void
     }
 
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+    if ($method !== 'OPTIONS' && !fm_oauth_bearer_valid()) {
+        fm_send_unauthorized();
+
+        return;
+    }
 
     if ($method === 'OPTIONS') {
         http_response_code(204);
@@ -650,7 +676,50 @@ function fm_selftest(): int
                 && str_contains($badSection['result']['content'][0]['text'] ?? '', 'FM26_AI_SYSTEM_PROMPT')
         );
 
-        // 15. unknown method
+        // 15. the OAuth layer: metadata documents and signed payloads
+        $resourceMetadata = fm_oauth_protected_resource_metadata();
+        $serverMetadata = fm_oauth_authorization_server_metadata();
+        $check(
+            'the OAuth metadata documents carry the required fields',
+            !empty($resourceMetadata['resource'])
+                && !empty($resourceMetadata['authorization_servers'][0])
+                && !empty($serverMetadata['issuer'])
+                && !empty($serverMetadata['authorization_endpoint'])
+                && !empty($serverMetadata['token_endpoint'])
+                && !empty($serverMetadata['registration_endpoint'])
+                && $serverMetadata['code_challenge_methods_supported'] === ['S256']
+                && in_array('refresh_token', $serverMetadata['grant_types_supported'], true)
+        );
+
+        $issued = fm_oauth_sign(['t' => 'at', 'exp' => time() + 60]);
+        $expired = fm_oauth_sign(['t' => 'at', 'exp' => time() - 1]);
+        $tampered = substr($issued, 0, -2) . (str_ends_with($issued, 'aa') ? 'bb' : 'aa');
+        $check(
+            'signed tokens verify, and tampered, expired or mistyped ones do not',
+            fm_oauth_verify($issued, 'at') !== null
+                && fm_oauth_verify($issued, 'rt') === null
+                && fm_oauth_verify($expired, 'at') === null
+                && fm_oauth_verify($tampered, 'at') === null
+                && fm_oauth_verify('nonsense', 'at') === null
+        );
+
+        // 16. a token signed with a different secret is refused
+        $foreign = fm_oauth_sign(['t' => 'at', 'exp' => time() + 60]);
+        $realSecret = fm_config()['secret'];
+        fm_config_set(array_merge(fm_config(), ['secret' => bin2hex(random_bytes(32))]));
+        $refused = fm_oauth_verify($foreign, 'at') === null;
+        fm_config_set(array_merge(fm_config(), ['secret' => $realSecret]));
+        $check('a token signed with another secret is refused', $refused);
+
+        // 17. bearer detection reads the header the host forwards
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . fm_oauth_sign(['t' => 'at', 'exp' => time() + 60]);
+        $accepted = fm_oauth_bearer_valid();
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer not-a-token';
+        $rejected = !fm_oauth_bearer_valid();
+        unset($_SERVER['HTTP_AUTHORIZATION']);
+        $check('a bearer header is read and validated', $accepted && $rejected);
+
+        // 18. unknown method
         $unknown = fm_handle_message(['jsonrpc' => '2.0', 'id' => 14, 'method' => 'no/such/method']);
         $check('an unknown method returns JSON-RPC -32601', ($unknown['error']['code'] ?? 0) === -32601);
     } finally {
@@ -674,7 +743,19 @@ if (PHP_SAPI === 'cli') {
     if ($argument === '--selftest') {
         exit(fm_selftest());
     }
-    fwrite(STDERR, "Usage: php mcp/server.php --selftest\n");
+    if ($argument === '--token') {
+        // A token for testing the live endpoint by hand, without walking the whole
+        // browser flow. It is worth nothing without the secret path.
+        try {
+            $now = time();
+            echo fm_oauth_sign(['t' => 'at', 'iat' => $now, 'exp' => $now + FM_OAUTH_ACCESS_TTL]), PHP_EOL;
+            exit(0);
+        } catch (Throwable $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
+            exit(1);
+        }
+    }
+    fwrite(STDERR, "Usage: php mcp/server.php --selftest | --token\n");
     exit(2);
 }
 
