@@ -211,9 +211,14 @@ function fm_handle_message(array $message): ?array
                     ],
                     'instructions' =>
                         'Football Manager 2026 save database. Call save_state first to learn the current '
-                        . 'in-game date, list_tables when column names are uncertain, query for every '
-                        . 'read, and import_json to record new data. Never answer from memory: the '
-                        . 'database is the only source of truth for this save.',
+                        . 'in-game date, reference before recommending any role or instruction, '
+                        . 'list_tables when column names are uncertain, query for every read, and '
+                        . 'import_json to record new data. Never answer from memory: this database is '
+                        . 'the only source of truth for the save. FM26 has no Defend/Support/Attack '
+                        . 'duties - each outfield player has one In Possession and one Out of Possession '
+                        . 'role, and a role is legal for a slot only if it appears under that position '
+                        . 'code and phase in the reference. Attribute numbers beat star ratings. Player '
+                        . 'state is dated: a new in-game date is a new row, never an edit to an old one.',
                 ];
 
                 return $isNotification ? null : fm_rpc_result($id, $result);
