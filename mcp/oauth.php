@@ -179,10 +179,18 @@ function fm_oauth_resource(): string
     return fm_oauth_origin() . '/mcp/' . fm_config()['secret'];
 }
 
-/** The metadata URL a 401 points at, per RFC 9728. */
+/**
+ * The metadata URL a 401 points at, per RFC 9728.
+ *
+ * RFC 9728 allows the resource path to be appended, and that form is served too, but
+ * the challenge advertises the plain well-known path: a client that only trusts the
+ * unsuffixed location would otherwise reject the URL and give up without ever fetching
+ * anything. Both locations return the same document, since this host serves one
+ * resource.
+ */
 function fm_oauth_resource_metadata_url(): string
 {
-    return fm_oauth_origin() . '/.well-known/oauth-protected-resource/mcp/' . fm_config()['secret'];
+    return fm_oauth_origin() . '/.well-known/oauth-protected-resource';
 }
 
 /* -------------------------------------------------------------- HTTP helpers */
