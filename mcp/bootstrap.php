@@ -465,7 +465,17 @@ if (($_GET['logs'] ?? '') !== '') {
 
     // HTTPS traffic is logged separately from port 80, and the file naming differs by
     // panel and server, so every plausible location is collected rather than guessed.
-    $candidates = [$home . '/logs/php.error.log'];
+    // Named directly as well as globbed: a log directory is often unreadable while the
+    // files inside it can still be opened by name.
+    $candidates = [
+        $home . '/logs/php.error.log',
+        '/usr/local/apache/domlogs/' . $host,
+        '/usr/local/apache/domlogs/' . $host . '-ssl_log',
+        '/usr/local/apache/domlogs/' . basename($home) . '/' . $host,
+        '/usr/local/apache/domlogs/' . basename($home) . '/' . $host . '-ssl_log',
+        $home . '/access-logs/' . $host,
+        $home . '/access-logs/' . $host . '-ssl_log',
+    ];
     foreach ([
         $home . '/access-logs/*',
         $home . '/logs/*' . $host . '*',
