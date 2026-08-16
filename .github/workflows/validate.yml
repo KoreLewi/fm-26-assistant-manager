@@ -85,6 +85,7 @@ jobs:
                   'password' => 'root',
                   'charset' => 'utf8mb4',
               ],
+              'active_save' => 'valencia-2025-26',
               'secret' => '00000000000000000000000000000000000000000000000000000000000000ci',
               'max_rows' => 500,
           ];

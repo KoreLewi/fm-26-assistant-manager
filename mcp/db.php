@@ -243,9 +243,14 @@ function fm_normalise_config(array $config): array
     // adds nothing on its own - the path is the credential - so this exists purely to
     // suit whichever handshake a given client insists on.
     $config['require_bearer'] = (bool) ($config['require_bearer'] ?? false);
-    // Which career is loaded. The database holds exactly one at a time; the others
-    // stay in the repository, unloaded.
-    $config['active_save'] = (string) ($config['active_save'] ?? 'valencia-2025-26');
+    // Which career is loaded. The database holds exactly one at a time; the others stay
+    // in the repository, unloaded. Named explicitly rather than defaulted, so a
+    // misconfigured host says so instead of quietly loading somebody else's career.
+    if (empty($config['active_save']) || !is_string($config['active_save'])) {
+        throw new FmMcpError(
+            "Server is not configured: 'active_save' must name a directory under data/saves/."
+        );
+    }
     if (!preg_match('/^[a-z0-9][a-z0-9._-]*$/i', $config['active_save'])) {
         throw new FmMcpError("Server is not configured: 'active_save' must be a directory name.");
     }
