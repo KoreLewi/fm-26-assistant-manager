@@ -43,6 +43,11 @@ def recorded_label_conflicts():
         if not {"player_roles", "fm_roles"} <= tables:
             return [], []
 
+        # An empty reference means it was never loaded, not that every recorded label
+        # is wrong. Comparing against nothing would condemn all of them.
+        if conn.execute("SELECT COUNT(*) FROM fm_roles").fetchone()[0] == 0:
+            return [], []
+
         conflicts = conn.execute("""
             SELECT r.role_text, r.phase, COUNT(*) AS rows
               FROM player_roles r
