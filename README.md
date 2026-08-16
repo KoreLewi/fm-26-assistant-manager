@@ -1,65 +1,111 @@
 # FM26 Assistant Manager
 
-Persistent data layer for an FM26 save. The database is designed to preserve historical facts instead of relying on chat memory.
+Persistent data layer for a Football Manager 2026 save, used by Claude acting as an
+assistant manager. The repository is the **single source of truth**: nothing may be
+recalled from chat memory or a previous save.
 
 ## Principle
 
-**Screenshot / manual input → structured record → SQLite → SQL query → tactical analysis**
+**Screenshot / manual input → structured JSON → SQLite → SQL query → tactical analysis**
 
-Raw facts are kept separately from interpretations. Historical records are not overwritten.
+Raw facts are kept separately from interpretations. Historical records are never
+overwritten. The SQLite file is *generated*, not stored — the committed JSON is the
+real data.
 
-## Current initial dataset
+## Repository layout
 
-The repository contains the first structured squad snapshot reconstructed from the 20 player screenshots supplied in the conversation.
+```
+data/
+  fm26_ai_system_prompt_v4.json    FM26 role + instruction reference (v4.1)
+  fm26_role_locale_hu.json         Hungarian UI <-> English role names
+  import_template.json             Empty shape of an import file
+  initial_valencia_snapshot_*.b64  First squad snapshot (gzip+base64 JSON)
+  season_2025-26_matches_*.json    Fixtures, match stats, season stats, league table
+  player_umar_sadiq_*.json         Single-player import example
+  match_barcelona_away_*.json      Match + pass map import example
+  tactics/mestral.json             Current tactic (shape, roles, instructions)
+  supplemental/                    One-off player additions
+db/
+  schema.sql                       Full table definitions
+  common_queries.sql               Example queries
+scripts/
+  init_db.py                       Create the database from schema.sql
+  import_initial_snapshot.py       Load the committed initial snapshot
+  import_json.py <file>            Load any import JSON
+  query.py "<SQL>"                 Run a query
+  verify_db.py                     Structural sanity check
+  validate.py                      Data integrity rules
+  validate_roles.py                Role-reference consistency check
+  rebuild_roles_from_ingame.py     Rebuild the role reference from observed lists
+.github/workflows/validate.yml     CI: build, import, verify, validate on every push
+```
 
-- In-game date: **2025-12-22**
-- Season: **2025/26**
-- Players: **20**
-- Attribute values: **714**
-- Player-role records: **92**
-- Primary club: **Valencia**
+## Quick start
 
-The 2025-12-22 game date is inferred from the screenshots: the displayed ages align with that date, and the Sergio Ramos screenshot shows 190 days remaining to 30/6/2026. If a later screenshot gives a more explicit in-game date, that date should replace the inference.
+```bash
+python3 scripts/init_db.py
+python3 scripts/import_initial_snapshot.py
+for f in data/*.json; do python3 scripts/import_json.py "$f"; done
+python3 scripts/verify_db.py
+python3 scripts/validate.py
+python3 scripts/validate_roles.py
+python3 scripts/query.py "SELECT name FROM players ORDER BY name;"
+```
+
+The binary `fm26.sqlite3` is in `.gitignore` and is rebuilt from JSON in well under a
+second, so it is always safe to delete and regenerate.
+
+## Current save state
+
+- Club: **Valencia**, First Division, 2025/26
+- Last recorded in-game date: **2026-01-10**
+- Matches recorded: 24 (17 league + cups + friendlies)
+- Players: 27
+- Active tactic: **Mestral** — 4-1-2-2-1, Control Possession style, Positive mentality
+
+The in-game date advances continuously with play and is **not** fixed; it is read from
+the most recent import, never assumed.
 
 ## What is stored
 
-- `game_state`: current in-game date and season. This is separate from the real-world date.
-- `teams`: clubs encountered in the save, including non-Valencia clubs.
-- `players`: stable player identity (name, DOB, nationality, etc.).
-- `player_snapshots`: age, club, position, value, wage, contract, height, personality, CA/PA stars and other time-dependent state.
-- `player_attributes`: individual FM attributes at a specific in-game date.
-- `player_roles`: role suitability shown on the player screen, kept as raw screenshot facts.
-- `player_traits`: player traits when they are explicitly captured.
-- `matches`: every match we explicitly record.
-- `match_players`: per-match minutes, rating, distance, xG, xA, goals, assists and other visible statistics.
-- `pass_map_nodes`: actual shirt-number-to-player mapping plus average map position.
-- `pass_map_links`: player-to-player passing relationships from the pass map.
-- `match_team_stats`: additional team statistics visible on screenshots.
-- `tactical_observations`: match-specific tactical facts and conclusions, with confidence.
-- `player_evaluations`: longer-term assessments of a player.
-- `scout_reports`: scouted players, including players who never belonged to Valencia.
+| Table | Contents |
+|---|---|
+| `game_state` | Current in-game date and season (separate from the real-world date) |
+| `teams` | Every club encountered in the save |
+| `players` | Stable player identity |
+| `player_snapshots` | Time-dependent state: age, value, wage, contract, CA/PA stars |
+| `player_attributes` | Individual FM attributes at a specific in-game date |
+| `player_roles` | Role suitability shown on the player screen |
+| `player_traits` | Player traits when explicitly captured |
+| `matches` | Every recorded match, with xG when visible |
+| `match_players` | Per-match minutes, rating, distance, xG, xA, goals, assists |
+| `player_season_stats` | Season aggregates: matches, goals, assists, xG, average rating, cards |
+| `league_standings` | League table snapshots |
+| `pass_map_nodes` | Shirt number to player mapping plus average pitch position |
+| `pass_map_links` | Player-to-player passing relationships |
+| `match_team_stats` | Additional team statistics from screenshots |
+| `tactical_observations` | Tactical facts and conclusions, with confidence |
+| `player_evaluations` | Longer-term assessments |
+| `scout_reports` | Scouted players, including players never at the club |
 
 ## FM26 tactical reference
 
-`data/fm26_ai_system_prompt_v4.json` is the canonical definition of the FM26
+`data/fm26_ai_system_prompt_v4.json` (v4.1) is the canonical definition of the FM26
 phase-based system: the legal In Possession and Out of Possession role list for every
-position code, the banned legacy role names, all preset tactical styles, and every team
-instruction with every option.
+position code, banned legacy role names, preset tactical styles, and every team
+instruction with its options.
 
-It is the reference any tactical recommendation must be validated against. FM26 has no
-Defend/Support/Attack duties - each outfield player receives exactly one IP role and one
-OOP role, and a role is legal for a slot only if its exact string appears under that
-position code and phase in `allowed_roles_index`.
+FM26 has **no** Defend/Support/Attack duties. Each outfield player receives exactly one
+IP role and one OOP role, and a role is legal for a slot only if its exact string
+appears under that position code and phase in `allowed_roles_index`.
 
-Validate the reference for internal consistency:
+v4.1 was rebuilt from in-game screenshots, so where the original research and the game
+disagreed, the game won. Codes `GK, DC, DR, DL, DM, MC, AMR, AML, ST` are
+screenshot-verified; `WBR, WBL, MR, ML, AMC` are **not** and remain unverified research.
+The changelog and open questions live inside the JSON under `_changelog`.
 
-```bash
-python3 scripts/validate_roles.py
-```
-
-The check enforces that the descriptive `positions` blocks and the flat
-`allowed_roles_index` agree character-for-character, that no banned legacy name leaks
-into the index, and that no position/phase list contains duplicates.
+`data/fm26_role_locale_hu.json` maps the Hungarian in-game labels to those English role
+names, and records the raw observed lists as source facts.
 
 ## Critical data rules
 
@@ -67,59 +113,30 @@ into the index, and that no position/phase list contains duplicates.
    handed over must be written into the database. If no table can hold it, extend the
    schema (and `scripts/import_json.py`) rather than dropping the data. Values that are
    truncated or unreadable on the source screen are stored as `NULL`, never guessed.
-
 1. **Never overwrite historical player snapshots.** A new in-game date creates a new snapshot.
-2. **Never resolve a pass-map shirt number by guessing from another match.** For every match, the shirt number shown in that match is linked to the player who actually wore it in that match.
-3. If something is inferred rather than directly visible, mark it as an inference and do not present it as a raw fact.
-4. Role labels from screenshots are stored as source facts. Tactical recommendations must separately validate the legal FM26 IP/OOP role system.
-
-## SQLite
-
-The repository stores the **schema, structured source data and import/query tools**. The binary `fm26.sqlite3` file is generated locally and ignored by Git.
-
-Initialize the database:
-
-```bash
-python3 scripts/init_db.py
-```
-
-Import the committed initial screenshot dataset:
-
-```bash
-python3 scripts/import_initial_snapshot.py
-```
-
-Verify the initial dataset:
-
-```bash
-python3 scripts/verify_db.py
-```
-
-Run a SQL query:
-
-```bash
-python3 scripts/query.py "SELECT * FROM players;"
-```
-
-Example queries are in `db/common_queries.sql`.
-
-The initial source dataset is stored as a gzip-compressed, base64-encoded JSON file so the complete 714-attribute dataset can live in Git without an enormous formatted JSON blob. The helper decodes it transparently before import.
+2. **Never resolve a pass-map shirt number by guessing from another match.** For every
+   match, the shirt number shown in that match belongs to the player who wore it then.
+3. If something is inferred rather than directly visible, mark it as an inference and do
+   not present it as a raw fact.
+4. Role labels from screenshots are stored as source facts. Tactical recommendations must
+   separately validate against the legal FM26 IP/OOP role system.
+5. **Attribute numbers beat star ratings** when evaluating a player.
+6. Data only enters analysis if it is present in this repository.
 
 ## Data workflow
 
 1. Establish the save's current in-game date.
 2. Load player screenshots as historical player/attribute snapshots.
 3. Load matches and player match statistics.
-4. Load pass-map nodes and links using the exact shirt numbers visible on that match's pass map.
+4. Load pass-map nodes and links using the shirt numbers visible on that match's pass map.
 5. Add tactical observations separately from raw statistics.
 6. Add scout reports for external players.
 7. When the save advances, create new snapshots instead of overwriting old ones.
 
-This lets us answer questions such as:
+## Roadmap
 
-- What was a player's attribute profile on a specific in-game date?
-- How did an attribute change between two dates?
-- What was Gayà's actual attacking/pass-map profile across matches?
-- Which scouted players resemble a role/profile?
-- Which players consistently performed well rather than only in one match?
-- What tactical structure produced the observed passing relationships?
+- **MCP server** (`mcp/`, planned): a small PHP + SQLite remote MCP server so any Claude
+  conversation can query and write this data directly, without pasting a GitHub token
+  each session. Build brief: `CLAUDE_MCP_TASK.md`.
+- **Multi-save support** (planned): a `saves` table and a `save_id` on every row so the
+  same engine serves any club, not just this Valencia save.
