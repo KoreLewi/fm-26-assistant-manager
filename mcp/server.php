@@ -155,7 +155,7 @@ function fm_rpc_error(mixed $id, int $code, string $message): array
     ];
 }
 
-function fm_rpc_result(mixed $id, array $result): array
+function fm_rpc_result(mixed $id, mixed $result): array
 {
     return [
         'jsonrpc' => '2.0',
@@ -219,7 +219,8 @@ function fm_handle_message(array $message): ?array
                 return $isNotification ? null : fm_rpc_result($id, $result);
 
             case 'ping':
-                return $isNotification ? null : fm_rpc_result($id, []);
+                // An empty PHP array encodes as [], and the result has to be an object.
+                return $isNotification ? null : fm_rpc_result($id, new stdClass());
 
             case 'tools/list':
                 return $isNotification ? null : fm_rpc_result($id, ['tools' => fm_tool_definitions()]);
