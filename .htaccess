@@ -1,0 +1,37 @@
+
+# BEGIN cPanel-generated php ini directives, do not edit
+# Manual editing of this file may result in unexpected behavior.
+# To make changes to this file, use the cPanel MultiPHP INI Editor (Home >> Software >> MultiPHP INI Editor)
+# For more information, read our documentation (https://go.cpanel.net/EA4ModifyINI)
+<IfModule php7_module>
+   php_value error_log "/home/kplev/logs/php.error.log"
+   php_flag log_errors On
+</IfModule>
+<IfModule lsapi_module>
+   php_value error_log "/home/kplev/logs/php.error.log"
+   php_flag log_errors On
+</IfModule>
+# END cPanel-generated php ini directives, do not edit
+
+# BEGIN FM26 repository protection
+# The document root holds a git working copy: source data, schema and scripts are
+# uploaded so mcp/bootstrap.php can rebuild the database, but none of it may be
+# fetched over HTTP. Only mcp/ answers requests.
+
+Options -Indexes
+
+# Repository directories.
+RedirectMatch 404 ^/(?:\.git|\.github|\.idea|\.vscode|data|db|scripts)(?:/|$)
+
+# Repository files: sources, documentation, environment, database dumps.
+RedirectMatch 404 (?i)^/[^?]*\.(?:py|json|b64|sql|md|sqlite3|db|bak|log|yml|yaml|ini|dist|example)$
+RedirectMatch 404 ^/(?:env|\.env|\.deploy\.env|\.ftpquota|\.gitignore|\.deploy-state\.json)$
+
+# Anything else starting with a dot.
+RedirectMatch 404 ^/(?:.*/)?\.[^/]+$
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+# END FM26 repository protection

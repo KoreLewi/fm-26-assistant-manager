@@ -11,8 +11,21 @@ __pycache__/
 .venv/
 venv/
 .env
+env
 .DS_Store
+
+# MCP server secrets and local state
+mcp/config.php
+mcp/config.local.php
+
+# Editor / OS
+.idea/
+.vscode/
+
+# Host-managed files (written by cPanel on the server, not by this repository)
+.ftpquota
 
 # Temporary exports
 /tmp/
 *.tmp
+artifacts/

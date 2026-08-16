@@ -1,0 +1,470 @@
+<?php
+/**
+ * Build the database on the host from the committed sources.
+ *
+ * The host has no Python, so this is the PHP equivalent of
+ *   scripts/init_db.py + scripts/import_initial_snapshot.py + scripts/import_json.py.
+ *
+ * Sources, in this order:
+ *   1. the schema for the configured engine (db/schema.mysql.sql or db/schema.sql)
+ *   2. every data/*.json.gz.b64 snapshot (gzip-compressed base64 JSON)
+ *   3. data/supplemental/*.json, which continue the snapshot's row numbering
+ *   4. the dated files directly under data/, then anything nested
+ *
+ * Foreign keys are deferred until the whole load is finished, so the committed files
+ * can be replayed in plain filename order regardless of which file introduces a parent
+ * row; the referential check afterwards has to come back clean or the rebuild is
+ * aborted. The in-game clock is only ever moved forward, so a template file carrying a
+ * placeholder date cannot rewind the save.
+ *
+ * CLI:  php mcp/bootstrap.php [--force] [--info]
+ *       php mcp/bootstrap.php --sqlite=/path/to/fm26.sqlite3 [--force]
+ *         builds without mcp/config.php, for a local rebuild or in CI.
+ * HTTP: POST https://host/mcp/bootstrap.php?token=<secret>&confirm=rebuild
+ *       GET  https://host/mcp/bootstrap.php?token=<secret>&info=1
+ */
+
+declare(strict_types=1);
+
+ini_set('display_errors', '0');
+ini_set('html_errors', '0');
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/db.php';
+
+/** Host facts needed to diagnose an install without shell access. */
+function fm_host_report(): array
+{
+    $lines = [
+        'PHP version        ' . PHP_VERSION,
+        'SAPI               ' . PHP_SAPI,
+        'pdo_mysql          ' . (extension_loaded('pdo_mysql') ? 'loaded' : 'MISSING'),
+        'pdo_sqlite         ' . (extension_loaded('pdo_sqlite') ? 'loaded' : 'MISSING'),
+        'zlib               ' . (extension_loaded('zlib') ? 'loaded' : 'MISSING'),
+        'json               ' . (extension_loaded('json') ? 'loaded' : 'MISSING'),
+        'document root      ' . ($_SERVER['DOCUMENT_ROOT'] ?? '(none)'),
+        'repository root    ' . dirname(__DIR__),
+        'open_basedir       ' . (ini_get('open_basedir') ?: '(not set)'),
+    ];
+
+    try {
+        $config = fm_config();
+        $lines[] = 'driver             ' . $config['driver'];
+
+        if ($config['driver'] === 'mysql') {
+            $lines[] = 'mysql host         ' . ($config['mysql']['socket'] ?: $config['mysql']['host'] . ':' . $config['mysql']['port']);
+            $lines[] = 'mysql database     ' . $config['mysql']['database'];
+            try {
+                $pdo = fm_pdo_rw();
+                $lines[] = 'connection         OK';
+                $lines[] = 'server version     ' . $pdo->query('SELECT VERSION()')->fetchColumn();
+                $tables = fm_table_names($pdo);
+                $lines[] = 'tables present     ' . (count($tables) > 0 ? count($tables) . ' (' . implode(', ', array_slice($tables, 0, 5)) . '...)' : 'none - not built yet');
+            } catch (Throwable $e) {
+                $lines[] = 'connection         FAILED: ' . $e->getMessage();
+            }
+        } else {
+            $dir = dirname($config['db_path']);
+            $lines[] = 'db_path            ' . $config['db_path'];
+            $lines[] = 'db directory       ' . (is_dir($dir)
+                ? (is_writable($dir) ? 'exists, writable' : 'exists, NOT writable')
+                : 'does not exist yet');
+            $lines[] = 'database           ' . (is_file($config['db_path'])
+                ? 'present (' . number_format((int) filesize($config['db_path'])) . ' bytes)'
+                : 'not built yet');
+        }
+    } catch (Throwable $e) {
+        $lines[] = 'config             ' . $e->getMessage();
+    }
+
+    return $lines;
+}
+
+/** Split a schema file into statements, ignoring semicolons inside strings and comments. */
+function fm_split_statements(string $sql): array
+{
+    $statements = [];
+    $current = '';
+    $len = strlen($sql);
+    $i = 0;
+
+    while ($i < $len) {
+        $ch = $sql[$i];
+        $next = $i + 1 < $len ? $sql[$i + 1] : '';
+
+        if (($ch === '-' && $next === '-') || $ch === '#') {
+            $end = strpos($sql, "\n", $i);
+            $i = $end === false ? $len : $end + 1;
+            continue;
+        }
+        if ($ch === '/' && $next === '*') {
+            $end = strpos($sql, '*/', $i + 2);
+            $i = $end === false ? $len : $end + 2;
+            continue;
+        }
+        if ($ch === "'" || $ch === '"' || $ch === '`') {
+            $current .= $ch;
+            $i++;
+            while ($i < $len) {
+                $current .= $sql[$i];
+                if ($sql[$i] === $ch) {
+                    $i++;
+                    break;
+                }
+                $i++;
+            }
+            continue;
+        }
+        if ($ch === ';') {
+            if (trim($current) !== '') {
+                $statements[] = trim($current);
+            }
+            $current = '';
+            $i++;
+            continue;
+        }
+
+        $current .= $ch;
+        $i++;
+    }
+
+    if (trim($current) !== '') {
+        $statements[] = trim($current);
+    }
+
+    return $statements;
+}
+
+/** Drop every table in the configured MySQL database. */
+function fm_mysql_drop_all(PDO $pdo): int
+{
+    $tables = fm_table_names($pdo);
+    if ($tables === []) {
+        return 0;
+    }
+    $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+    foreach ($tables as $table) {
+        $pdo->exec('DROP TABLE IF EXISTS ' . fm_ident($table));
+    }
+    $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+
+    return count($tables);
+}
+
+/**
+ * Referential integrity check. MySQL has no equivalent of PRAGMA foreign_key_check, so
+ * every declared foreign key is verified with a left join against its parent.
+ *
+ * @return string[] human-readable descriptions of the violations found
+ */
+function fm_check_foreign_keys(PDO $pdo): array
+{
+    if (fm_driver() === 'sqlite') {
+        $violations = $pdo->query('PRAGMA foreign_key_check')->fetchAll();
+
+        return array_map(
+            static fn ($row) => sprintf('%s -> %s', $row['table'] ?? '?', $row['parent'] ?? '?'),
+            $violations
+        );
+    }
+
+    $constraints = $pdo->query(
+        'SELECT k.constraint_name, k.table_name, k.column_name,
+                k.referenced_table_name, k.referenced_column_name
+           FROM information_schema.key_column_usage k
+          WHERE k.table_schema = DATABASE() AND k.referenced_table_name IS NOT NULL
+          ORDER BY k.constraint_name, k.ordinal_position'
+    )->fetchAll();
+
+    $problems = [];
+    foreach ($constraints as $row) {
+        $row = array_change_key_case($row, CASE_LOWER);
+        $child = fm_ident($row['table_name']);
+        $childColumn = fm_ident($row['column_name']);
+        $parent = fm_ident($row['referenced_table_name']);
+        $parentColumn = fm_ident($row['referenced_column_name']);
+
+        $orphans = (int) $pdo->query(
+            "SELECT COUNT(*) FROM {$child} c LEFT JOIN {$parent} p ON c.{$childColumn} = p.{$parentColumn} "
+            . "WHERE c.{$childColumn} IS NOT NULL AND p.{$parentColumn} IS NULL"
+        )->fetchColumn();
+
+        if ($orphans > 0) {
+            $problems[] = sprintf(
+                '%s.%s -> %s.%s: %d orphaned row(s)',
+                $row['table_name'],
+                $row['column_name'],
+                $row['referenced_table_name'],
+                $row['referenced_column_name'],
+                $orphans
+            );
+        }
+    }
+
+    return $problems;
+}
+
+/** Collect the committed source files in the order they have to be replayed. */
+function fm_source_files(string $root): array
+{
+    $sources = glob($root . '/data/*.json.gz.b64') ?: [];
+
+    // Supplemental files extend the initial snapshot and carry explicit row ids that
+    // continue its numbering, so they have to be replayed directly after it. Only then
+    // come the dated top-level imports, whose rows are auto-numbered and must land
+    // above the ids already taken.
+    $supplemental = [];
+    $topLevel = [];
+    $nested = [];
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($root . '/data', FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($iterator as $file) {
+        if (!$file->isFile() || strtolower($file->getExtension()) !== 'json') {
+            continue;
+        }
+        $path = $file->getPathname();
+        $relative = ltrim(str_replace($root . '/data', '', $path), '/');
+        if (str_starts_with($relative, 'supplemental/')) {
+            $supplemental[] = $path;
+        } elseif (!str_contains($relative, '/')) {
+            $topLevel[] = $path;
+        } else {
+            $nested[] = $path;
+        }
+    }
+    sort($supplemental);
+    sort($topLevel);
+    sort($nested);
+
+    return array_merge($sources, $supplemental, $topLevel, $nested);
+}
+
+/**
+ * @return array{lines: string[], ok: bool}
+ */
+function fm_bootstrap(bool $force): array
+{
+    if (!extension_loaded('zlib')) {
+        throw new FmMcpError('The zlib extension is required to decode the committed snapshot.');
+    }
+
+    $lines = [];
+    $config = fm_config();
+    $root = $config['repo_root'];
+    $driver = $config['driver'];
+
+    $schemaPath = $root . ($driver === 'mysql' ? '/db/schema.mysql.sql' : '/db/schema.sql');
+    if (!is_file($schemaPath)) {
+        throw new FmMcpError(basename($schemaPath) . " not found under {$root}/db.");
+    }
+
+    if ($driver === 'sqlite') {
+        $dbPath = $config['db_path'];
+        $dir = dirname($dbPath);
+        if (!is_dir($dir) && !mkdir($dir, 0750, true) && !is_dir($dir)) {
+            throw new FmMcpError("Cannot create the database directory {$dir}.");
+        }
+        if (!is_writable($dir)) {
+            throw new FmMcpError("The database directory {$dir} is not writable by PHP.");
+        }
+
+        $webRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: null;
+        $dbReal = realpath($dir);
+        if ($webRoot !== null && $dbReal !== false && str_starts_with($dbReal . '/', $webRoot . '/')) {
+            throw new FmMcpError(
+                "Refusing to build: {$dbReal} is inside the web root {$webRoot}. "
+                . 'Move db_path outside the document root.'
+            );
+        }
+
+        if (is_file($dbPath)) {
+            if (!$force) {
+                throw new FmMcpError(
+                    "The database already exists at {$dbPath}. Pass --force (CLI) or &force=1 (HTTP) to rebuild it."
+                );
+            }
+            $backup = $dbPath . '.' . gmdate('Ymd-His') . '.bak';
+            if (!rename($dbPath, $backup)) {
+                throw new FmMcpError("Cannot move the existing database aside to {$backup}.");
+            }
+            $lines[] = "Existing database moved to {$backup}";
+        }
+
+        $pdo = new PDO(fm_sqlite_dsn($dbPath), null, null, fm_pdo_options());
+        foreach (fm_split_statements((string) file_get_contents($schemaPath)) as $statement) {
+            $pdo->exec($statement);
+        }
+        // schema.sql turns foreign keys on; defer them until every source file is loaded.
+        $pdo->exec('PRAGMA foreign_keys = OFF');
+    } else {
+        $pdo = fm_pdo_rw();
+        $existing = fm_table_names($pdo);
+        if ($existing !== [] && !$force) {
+            throw new FmMcpError(sprintf(
+                'The database %s already holds %d table(s). Pass --force (CLI) or &force=1 (HTTP) to rebuild it.',
+                $config['mysql']['database'],
+                count($existing)
+            ));
+        }
+        if ($existing !== []) {
+            $lines[] = sprintf('Dropped %d existing table(s)', fm_mysql_drop_all($pdo));
+        }
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+        foreach (fm_split_statements((string) file_get_contents($schemaPath)) as $statement) {
+            $pdo->exec($statement);
+        }
+    }
+    $lines[] = 'Schema created from db/' . basename($schemaPath);
+
+    $sources = fm_source_files($root);
+    if ($sources === []) {
+        throw new FmMcpError("No source files found under {$root}/data.");
+    }
+
+    $pdo->beginTransaction();
+    try {
+        foreach ($sources as $file) {
+            $raw = (string) file_get_contents($file);
+            if (str_ends_with($file, '.gz.b64')) {
+                $decoded = base64_decode(trim($raw), true);
+                if ($decoded === false) {
+                    throw new FmMcpError('Cannot base64-decode ' . basename($file));
+                }
+                $raw = gzdecode($decoded);
+                if ($raw === false) {
+                    throw new FmMcpError('Cannot gzip-decode ' . basename($file));
+                }
+            }
+
+            $payload = json_decode($raw, true);
+            if (!is_array($payload)) {
+                $lines[] = sprintf('  skipped  %-52s (not a JSON object)', basename($file));
+                continue;
+            }
+
+            $written = fm_import_payload($pdo, $payload, true);
+            $rows = 0;
+            foreach ($written as $value) {
+                if (is_int($value)) {
+                    $rows += $value;
+                }
+            }
+            $lines[] = sprintf('  imported %-52s %5d rows', basename($file), $rows);
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e instanceof FmMcpError
+            ? $e
+            : new FmMcpError('Bootstrap failed and was rolled back: ' . $e->getMessage());
+    }
+
+    $violations = fm_check_foreign_keys($pdo);
+    if ($violations !== []) {
+        throw new FmMcpError(
+            'Referential check failed; the committed data is inconsistent: ' . implode('; ', $violations)
+        );
+    }
+    $lines[] = 'Referential check clean';
+
+    if ($driver === 'sqlite') {
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $pdo->exec('VACUUM');
+        @chmod($config['db_path'], 0640);
+    } else {
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+    }
+
+    $state = fm_save_state();
+    $lines[] = sprintf(
+        'Save state: %s, season %s, club %s',
+        $state['current_game_date'] ?? 'unknown',
+        $state['season'] ?? 'unknown',
+        $state['club'] ?? 'unknown'
+    );
+    foreach ($state['row_counts'] as $table => $count) {
+        $lines[] = sprintf('  %-24s %6d', $table, $count);
+    }
+    $lines[] = 'Database ready: ' . ($driver === 'mysql'
+        ? $config['mysql']['database'] . ' on ' . $config['mysql']['host']
+        : $config['db_path']);
+
+    return ['lines' => $lines, 'ok' => true];
+}
+
+/* -------------------------------------------------------------------- entry */
+
+if (PHP_SAPI === 'cli') {
+    $force = in_array('--force', $argv ?? [], true);
+
+    // --sqlite builds without config.php, for a local rebuild or in CI.
+    foreach ($argv ?? [] as $argument) {
+        if (str_starts_with($argument, '--sqlite=')) {
+            fm_config_set([
+                'driver' => 'sqlite',
+                'db_path' => substr($argument, 9),
+                'secret' => str_repeat('0', 64),
+                'max_rows' => 500,
+                'log_file' => null,
+                'repo_root' => dirname(__DIR__),
+            ]);
+        }
+    }
+
+    if (in_array('--info', $argv ?? [], true)) {
+        echo implode("\n", fm_host_report()), "\n";
+        exit(0);
+    }
+
+    try {
+        $result = fm_bootstrap($force);
+        echo implode("\n", $result['lines']), "\n";
+        exit(0);
+    } catch (Throwable $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+}
+
+// Web mode: same capability token as the MCP endpoint, plus an explicit confirmation
+// because a rebuild replaces the live database.
+$token = (string) ($_GET['token'] ?? '');
+try {
+    $secret = fm_config()['secret'];
+} catch (Throwable $e) {
+    $secret = '';
+}
+
+if ($secret === '' || $token === '' || !hash_equals($secret, $token)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Not Found\n";
+    exit;
+}
+
+header('Content-Type: text/plain; charset=utf-8');
+header('Cache-Control: no-store');
+
+if (($_GET['info'] ?? '') === '1') {
+    echo implode("\n", fm_host_report()), "\n";
+    exit;
+}
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || ($_GET['confirm'] ?? '') !== 'rebuild') {
+    http_response_code(400);
+    echo "POST with &confirm=rebuild to build the database. Add &force=1 to replace an existing one.\n";
+    echo "GET with &info=1 to see the host report.\n";
+    exit;
+}
+
+try {
+    $result = fm_bootstrap(($_GET['force'] ?? '') === '1');
+    echo implode("\n", $result['lines']), "\n";
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo 'ERROR: ' . $e->getMessage(), "\n";
+}

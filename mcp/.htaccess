@@ -1,0 +1,35 @@
+# FM26 MCP endpoint.
+#
+# Maps https://host/mcp/<secret>/ onto server.php and passes the secret to PHP in the
+# MCP_PATH_TOKEN environment variable. server.php also reads the token straight from the
+# request path, so the endpoint still works if mod_rewrite is unavailable and the URL is
+# written as /mcp/server.php/<secret>.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /mcp/
+
+    # Real files (server.php, bootstrap.php) keep resolving normally.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^([A-Za-z0-9_.~-]{32,200})/?$ server.php [E=MCP_PATH_TOKEN:$1,QSA,L]
+</IfModule>
+
+# Includes and configuration are never fetched over HTTP.
+<FilesMatch "^(config.*\.php|db\.php|tools\.php)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# The request path carries the secret, so responses must not be cached anywhere.
+<IfModule mod_headers.c>
+    Header always set Cache-Control "no-store"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>

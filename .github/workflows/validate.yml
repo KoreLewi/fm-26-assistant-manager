@@ -25,3 +25,89 @@ jobs:
         run: python3 scripts/validate_roles.py
       - name: Verify query layer
         run: python3 scripts/query.py "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;"
+
+  mcp:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: fm26_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, pdo_sqlite, sqlite3, zlib, json
+          coverage: none
+
+      - name: Lint the PHP sources
+        run: for file in mcp/*.php; do php -l "$file"; done
+
+      # Runs on SQLite, so it needs no database server and touches no configuration.
+      - name: MCP server selftest
+        run: php mcp/server.php --selftest
+
+      - name: Write a CI configuration
+        run: |
+          cat > mcp/config.ci.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+          return [
+              'driver' => 'mysql',
+              'mysql' => [
+                  'host' => '127.0.0.1',
+                  'port' => 3306,
+                  'database' => 'fm26_ci',
+                  'username' => 'root',
+                  'password' => 'root',
+                  'charset' => 'utf8mb4',
+              ],
+              'secret' => '00000000000000000000000000000000000000000000000000000000000000ci',
+              'max_rows' => 500,
+          ];
+          PHP
+
+      - name: Build the database on MySQL
+        env:
+          FM26_CONFIG: mcp/config.ci.php
+        run: php mcp/bootstrap.php --force
+
+      - name: Build the same database with the Python importers
+        run: |
+          python3 scripts/init_db.py
+          python3 scripts/import_initial_snapshot.py
+          python3 scripts/import_json.py data/supplemental/filip_ugrinic_2025-12-22.json
+          python3 scripts/import_json.py data/season_2025-26_matches_2026-01-07.json
+          python3 scripts/import_json.py data/player_umar_sadiq_2026-01-07.json
+          python3 scripts/import_json.py data/match_barcelona_away_2026-01-10.json
+
+      # The two importers share a table and column whitelist that lives in two files,
+      # and the schema is declared twice, once per engine. Comparing the databases they
+      # produce is what stops the copies from drifting.
+      - name: Compare MySQL against SQLite row by row
+        run: python3 scripts/compare_databases.py fm26.sqlite3 mysql://root:root@127.0.0.1:3306/fm26_ci
+
+      - name: Build with the SQLite driver as well and compare
+        run: |
+          php mcp/bootstrap.php --sqlite=php.sqlite3 --force
+          python3 scripts/compare_databases.py fm26.sqlite3 php.sqlite3
+
+      - name: Verify the PHP build against the same rules as the Python build
+        run: |
+          cp php.sqlite3 fm26.sqlite3
+          python3 scripts/verify_db.py
+          python3 scripts/validate.py
