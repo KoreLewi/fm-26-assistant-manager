@@ -29,6 +29,9 @@ Options -Indexes
     RewriteRule ^\.well-known/oauth-authorization-server(/.*)?$ mcp/oauth.php [E=FM_OAUTH_ROUTE:authorization-server,QSA,L]
     RewriteRule ^\.well-known/openid-configuration$ mcp/oauth.php [E=FM_OAUTH_ROUTE:authorization-server,QSA,L]
     RewriteRule ^oauth/(register|authorize|token)/?$ mcp/oauth.php [E=FM_OAUTH_ROUTE:$1,QSA,L]
+
+    # Clients that ignore the advertised endpoints and guess root-level ones.
+    RewriteRule ^(register|authorize|token)/?$ mcp/oauth.php [E=FM_OAUTH_ROUTE:$1,QSA,L]
 </IfModule>
 
 # Repository directories.

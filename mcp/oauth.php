@@ -32,6 +32,54 @@ const FM_OAUTH_CODE_TTL = 600;            // 10 minutes
 const FM_OAUTH_ACCESS_TTL = 2592000;      // 30 days
 const FM_OAUTH_REFRESH_TTL = 31536000;    // 365 days
 
+/* ------------------------------------------------------------------ tracing */
+
+/**
+ * Append one line about an incoming request.
+ *
+ * The client reports a registration failure without saying which step failed, and the
+ * host's access log is not readable from here, so the server keeps its own short trail:
+ * what was asked for, from where, and what it answered. The secret never goes in - the
+ * path is reduced to its shape.
+ */
+function fm_trace(string $event, array $fields = []): void
+{
+    $file = fm_trace_file();
+    if ($file === null) {
+        return;
+    }
+
+    $path = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+    $line = array_merge([
+        'at' => gmdate('c'),
+        'event' => $event,
+        'method' => $_SERVER['REQUEST_METHOD'] ?? '-',
+        // Long hex segments are the capability secret; keep the shape, drop the value.
+        'path' => preg_replace('/[A-Fa-f0-9]{32,}/', '<secret>', $path),
+        'ip' => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? '-'),
+        'ua' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? '-'), 0, 80),
+    ], $fields);
+
+    @file_put_contents($file, json_encode($line, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+}
+
+/** Where the trail is kept, or null when tracing is switched off. */
+function fm_trace_file(): ?string
+{
+    try {
+        $config = fm_config();
+    } catch (Throwable $e) {
+        return null;
+    }
+    if (empty($config['trace'])) {
+        return null;
+    }
+
+    return is_string($config['trace'])
+        ? $config['trace']
+        : sys_get_temp_dir() . '/fm26-mcp-trace.log';
+}
+
 /* ------------------------------------------------------------ signed payloads */
 
 function fm_base64url_encode(string $raw): string
@@ -195,10 +243,12 @@ function fm_oauth_register(): void
     $raw = (string) file_get_contents('php://input');
     $request = json_decode($raw, true);
     if (!is_array($request)) {
+        fm_trace('register-bad-body', ['len' => strlen($raw), 'body' => substr($raw, 0, 200)]);
         fm_oauth_error('invalid_client_metadata', 'The registration request must be a JSON object.');
 
         return;
     }
+    fm_trace('register', ['request' => $request]);
 
     $redirectUris = $request['redirect_uris'] ?? [];
     if (!is_array($redirectUris) || $redirectUris === []) {
@@ -397,8 +447,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     exit;
 }
 
+$route = fm_oauth_route();
+fm_trace('oauth', ['route' => $route ?: '(none)']);
+
 try {
-    switch (fm_oauth_route()) {
+    switch ($route) {
         case 'protected-resource':
             fm_oauth_json(fm_oauth_protected_resource_metadata());
             break;
@@ -424,6 +477,7 @@ try {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['error' => 'not_found']);
     }
+    fm_trace('oauth-done', ['route' => $route ?: '(none)', 'status' => http_response_code()]);
 } catch (Throwable $e) {
     error_log('fm26-mcp oauth: ' . $e->getMessage());
     fm_oauth_error('server_error', 'The authorization server failed to handle the request.', 500);

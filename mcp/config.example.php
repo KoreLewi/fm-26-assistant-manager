@@ -42,6 +42,11 @@ return [
     // file logging.
     'log_file' => null,
 
+    // Write a line per request to a trail readable at
+    // bootstrap.php?token=<secret>&trace=1. Useful while a client's handshake is
+    // failing; true keeps it in the system temporary directory, or give a path.
+    'trace' => false,
+
     // Repository root used by bootstrap.php to locate db/ and data/.
     // Defaults to the parent directory of mcp/ when null.
     'repo_root' => null,

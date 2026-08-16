@@ -31,6 +31,7 @@ ini_set('html_errors', '0');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/oauth.php';
 
 /** Host facts needed to diagnose an install without shell access. */
 function fm_host_report(): array
@@ -453,6 +454,27 @@ header('Cache-Control: no-store');
 
 if (($_GET['info'] ?? '') === '1') {
     echo implode("\n", fm_host_report()), "\n";
+    exit;
+}
+
+// The request trail, for working out where a client's handshake stops.
+if (isset($_GET['trace'])) {
+    $file = fm_trace_file();
+    if ($file === null) {
+        echo "Tracing is off. Set 'trace' => true in mcp/config.php.\n";
+        exit;
+    }
+    if ($_GET['trace'] === 'clear') {
+        @unlink($file);
+        echo "Trace cleared.\n";
+        exit;
+    }
+    if (!is_file($file)) {
+        echo "No requests traced yet ({$file}).\n";
+        exit;
+    }
+    $lines = file($file, FILE_IGNORE_NEW_LINES) ?: [];
+    echo implode("\n", array_slice($lines, -200)), "\n";
     exit;
 }
 

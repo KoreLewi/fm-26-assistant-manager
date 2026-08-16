@@ -291,6 +291,7 @@ function fm_handle_http(): void
 
     // The path secret comes first: without it the endpoint does not exist at all.
     if (!fm_auth_ok(fm_request_token())) {
+        fm_trace('mcp-unknown-path');
         fm_send_not_found();
 
         return;
@@ -299,10 +300,12 @@ function fm_handle_http(): void
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
     if ($method !== 'OPTIONS' && !fm_oauth_bearer_valid()) {
+        fm_trace('mcp-401');
         fm_send_unauthorized();
 
         return;
     }
+    fm_trace('mcp');
 
     if ($method === 'OPTIONS') {
         http_response_code(204);
