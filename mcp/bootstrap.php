@@ -457,6 +457,39 @@ if (($_GET['info'] ?? '') === '1') {
     exit;
 }
 
+// The host's own logs, which say whether a request reached the web server at all.
+if (($_GET['logs'] ?? '') !== '') {
+    $needle = (string) $_GET['logs'];
+    $home = dirname((string) ($_SERVER['DOCUMENT_ROOT'] ?? '/home'));
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? 'fm.kplev.hu');
+    $candidates = [
+        $home . '/access-logs/' . $host,
+        $home . '/access-logs/' . $host . '-ssl_log',
+        $home . '/logs/' . $host . '.log',
+        $home . '/logs/php.error.log',
+        '/usr/local/apache/domlogs/' . $host,
+        '/var/log/apache2/access_log',
+    ];
+
+    foreach ($candidates as $candidate) {
+        echo str_pad($candidate, 60), is_readable($candidate) ? 'readable' : 'not readable', "\n";
+    }
+    echo str_repeat('-', 72), "\n";
+
+    foreach ($candidates as $candidate) {
+        if (!is_readable($candidate)) {
+            continue;
+        }
+        $lines = @file($candidate, FILE_IGNORE_NEW_LINES) ?: [];
+        if ($needle !== '1') {
+            $lines = array_values(array_filter($lines, static fn ($l) => stripos($l, $needle) !== false));
+        }
+        echo "\n== ", $candidate, " (", count($lines), " matching lines) ==\n";
+        echo implode("\n", array_slice($lines, -80)), "\n";
+    }
+    exit;
+}
+
 // The request trail, for working out where a client's handshake stops.
 if (isset($_GET['trace'])) {
     $file = fm_trace_file();

@@ -20,6 +20,11 @@
 
 Options -Indexes
 
+# A refused request never reaches a PHP route, so it would leave no trace at all.
+# Routing the error documents through PHP records what the server turned away.
+ErrorDocument 403 /mcp/trace404.php
+ErrorDocument 404 /mcp/trace404.php
+
 # OAuth endpoints. The client discovers them at the origin root, so they are routed
 # from here into mcp/oauth.php rather than living under /mcp/.
 <IfModule mod_rewrite.c>
