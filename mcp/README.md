@@ -9,7 +9,7 @@ an older PHP or without those extensions, with a plain message saying which is m
 ```
 mcp/
   server.php          entry point: authentication, JSON-RPC dispatch, --selftest
-  tools.php           the four tool definitions and their handlers
+  tools.php           the five tool definitions and their handlers
   db.php              connections, the read-only guard, the SQL guard, the importer
   bootstrap.php       builds the database on the host from db/ and data/
   config.example.php  configuration template
@@ -161,7 +161,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST \
 
 Settings → Connectors → Add custom connector. Paste
 `https://fm.kplev.hu/mcp/<secret>/` as the URL and leave the OAuth fields empty. The
-four tools appear once the connector reports as connected.
+five tools appear once the connector reports as connected.
 
 ## Web server configuration
 
