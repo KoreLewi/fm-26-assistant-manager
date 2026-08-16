@@ -374,3 +374,58 @@ CREATE TABLE IF NOT EXISTS fm_reference (
     UNIQUE KEY uq_fm_reference (document, path),
     KEY idx_fm_reference_document (document)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tactics (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) NOT NULL,
+    game_date VARCHAR(32) NOT NULL,
+    style_en VARCHAR(128),
+    style_hu VARCHAR(128),
+    mentality_en VARCHAR(64),
+    mentality_hu VARCHAR(64),
+    shape_ip TEXT,
+    shape_oop TEXT,
+    in_game_slot VARCHAR(128),
+    source TEXT,
+    notes TEXT,
+    UNIQUE KEY uq_tactics (name, game_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tactic_slots (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tactic_id INT NOT NULL,
+    slot VARCHAR(8) COLLATE utf8mb4_bin NOT NULL,
+    position_code VARCHAR(8) COLLATE utf8mb4_bin,
+    ui_label VARCHAR(32),
+    ip_role VARCHAR(128),
+    oop_role VARCHAR(128),
+    UNIQUE KEY uq_tactic_slots (tactic_id, slot),
+    KEY idx_tactic_slots_tactic (tactic_id),
+    CONSTRAINT fk_tactic_slots_tactic FOREIGN KEY (tactic_id) REFERENCES tactics(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tactic_instructions (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tactic_id INT NOT NULL,
+    phase VARCHAR(20) COLLATE utf8mb4_bin NOT NULL,
+    group_name VARCHAR(64) NOT NULL,
+    instruction VARCHAR(128) NOT NULL,
+    value_en VARCHAR(191),
+    value_hu VARCHAR(191),
+    source TEXT,
+    UNIQUE KEY uq_tactic_instructions (tactic_id, phase, group_name, instruction),
+    CONSTRAINT fk_tactic_instructions_tactic FOREIGN KEY (tactic_id) REFERENCES tactics(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tactic_lineups (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tactic_id INT NOT NULL,
+    label VARCHAR(64) NOT NULL,
+    slot VARCHAR(8) COLLATE utf8mb4_bin NOT NULL,
+    player_id INT,
+    raw_label VARCHAR(191) NOT NULL,
+    UNIQUE KEY uq_tactic_lineups (tactic_id, label, slot),
+    KEY idx_tactic_lineups_player (player_id),
+    CONSTRAINT fk_tactic_lineups_tactic FOREIGN KEY (tactic_id) REFERENCES tactics(id),
+    CONSTRAINT fk_tactic_lineups_player FOREIGN KEY (player_id) REFERENCES players(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

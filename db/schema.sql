@@ -338,3 +338,62 @@ CREATE TABLE IF NOT EXISTS fm_reference (
 
 CREATE INDEX IF NOT EXISTS idx_fm_roles_position ON fm_roles(position_code, phase);
 CREATE INDEX IF NOT EXISTS idx_fm_reference_document ON fm_reference(document);
+
+-- The tactic in use. Career data: dated like every other historical record, so a
+-- changed tactic is a new row rather than an edit.
+
+CREATE TABLE IF NOT EXISTS tactics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    style_en TEXT,
+    style_hu TEXT,
+    mentality_en TEXT,
+    mentality_hu TEXT,
+    shape_ip TEXT,
+    shape_oop TEXT,
+    in_game_slot TEXT,
+    source TEXT,
+    notes TEXT,
+    UNIQUE(name, game_date)
+);
+
+CREATE TABLE IF NOT EXISTS tactic_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tactic_id INTEGER NOT NULL,
+    slot TEXT NOT NULL,
+    position_code TEXT,
+    ui_label TEXT,
+    ip_role TEXT,
+    oop_role TEXT,
+    UNIQUE(tactic_id, slot),
+    FOREIGN KEY(tactic_id) REFERENCES tactics(id)
+);
+
+CREATE TABLE IF NOT EXISTS tactic_instructions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tactic_id INTEGER NOT NULL,
+    phase TEXT NOT NULL,
+    group_name TEXT NOT NULL,
+    instruction TEXT NOT NULL,
+    value_en TEXT,
+    value_hu TEXT,
+    source TEXT,
+    UNIQUE(tactic_id, phase, group_name, instruction),
+    FOREIGN KEY(tactic_id) REFERENCES tactics(id)
+);
+
+CREATE TABLE IF NOT EXISTS tactic_lineups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tactic_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    slot TEXT NOT NULL,
+    player_id INTEGER,
+    raw_label TEXT NOT NULL,
+    UNIQUE(tactic_id, label, slot),
+    FOREIGN KEY(tactic_id) REFERENCES tactics(id),
+    FOREIGN KEY(player_id) REFERENCES players(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tactic_slots_tactic ON tactic_slots(tactic_id);
+CREATE INDEX IF NOT EXISTS idx_tactic_lineups_player ON tactic_lineups(player_id);
