@@ -26,7 +26,7 @@ mcp/
 | Transport | Streamable HTTP: one JSON-RPC 2.0 message per POST, answered as `application/json`. SSE is not offered; `GET` returns 405. |
 | Authentication | Capability URL — the secret is a path segment: `https://host/mcp/<secret>/`. Compared with `hash_equals`. |
 | Wrong secret | HTTP 404, not 401, so the endpoint's existence is never confirmed. |
-| Reads | A separate connection put into `START TRANSACTION READ ONLY` (SQLite: `mode=ro` plus `query_only`). The database server refuses every write inside it, including DDL. |
+| Reads | A separate connection put into `START TRANSACTION READ ONLY` (SQLite: `PRAGMA query_only`). The engine refuses every write on it, including DDL. |
 | Writes | Only through `import_json`, in one transaction, rolled back completely on any error. |
 | Credentials | In `config.php`, which is not in git and is denied over HTTP. |
 

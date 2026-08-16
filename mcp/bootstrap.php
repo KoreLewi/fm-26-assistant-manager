@@ -294,7 +294,7 @@ function fm_bootstrap(bool $force): array
             $lines[] = "Existing database moved to {$backup}";
         }
 
-        $pdo = new PDO(fm_sqlite_dsn($dbPath), null, null, fm_pdo_options());
+        $pdo = fm_sqlite_pdo($dbPath);
         foreach (fm_split_statements((string) file_get_contents($schemaPath)) as $statement) {
             $pdo->exec($statement);
         }

@@ -382,7 +382,7 @@ function fm_selftest(): int
     try {
         // A minimal database rather than the committed data set, so the selftest
         // stays valid however the repository content changes.
-        $pdo = new PDO(fm_sqlite_dsn($dbPath), null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo = fm_sqlite_pdo($dbPath);
         $schema = dirname(__DIR__) . '/db/schema.sql';
         if (!is_file($schema)) {
             fwrite(STDERR, "db/schema.sql not found next to mcp/\n");

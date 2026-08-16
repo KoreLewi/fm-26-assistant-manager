@@ -265,12 +265,24 @@ function fm_ident(string $name): string
     return '"' . str_replace('"', '""', $name) . '"';
 }
 
-/** Build a SQLite URI DSN for a filesystem path. */
-function fm_sqlite_dsn(string $path, string $query = ''): string
+/**
+ * Open a SQLite file.
+ *
+ * The URI form of the DSN (sqlite:file:...?mode=ro) is not available on every build --
+ * PHP 8.0 with a stock pdo_sqlite rejects it -- and when it is rejected PDO can fall
+ * back to treating the whole string as a filename and quietly open the wrong file. The
+ * plain DSN plus PRAGMA query_only is portable and blocks writes at the same layer, so
+ * that is what is used.
+ */
+function fm_sqlite_pdo(string $path, bool $readOnly = false): PDO
 {
-    $encoded = str_replace('%2F', '/', rawurlencode($path));
+    $pdo = new PDO('sqlite:' . $path, null, null, fm_pdo_options());
+    if ($readOnly) {
+        $pdo->exec('PRAGMA query_only = 1');
+    }
+    $pdo->exec('PRAGMA busy_timeout = 5000');
 
-    return 'sqlite:file:' . $encoded . ($query !== '' ? '?' . $query : '');
+    return $pdo;
 }
 
 function fm_mysql_dsn(array $mysql): string
@@ -303,9 +315,8 @@ function fm_pdo_rw(): PDO
         if (!is_file($config['db_path'])) {
             throw new FmMcpError('The database file does not exist yet. Run mcp/bootstrap.php on the host first.');
         }
-        $pdo = new PDO(fm_sqlite_dsn($config['db_path']), null, null, fm_pdo_options());
+        $pdo = fm_sqlite_pdo($config['db_path']);
         $pdo->exec('PRAGMA foreign_keys = ON');
-        $pdo->exec('PRAGMA busy_timeout = 5000');
 
         return $pdo;
     }
@@ -325,10 +336,10 @@ function fm_pdo_rw(): PDO
 /**
  * Read-only connection for the query tool.
  *
- * On SQLite the handle is opened mode=ro with query_only on top. On MySQL the session
- * is put into a read-only transaction, which the server enforces: any write inside it
- * is refused whatever the statement text looked like. Either way the connection itself
- * is the guard, and the textual check in fm_assert_readonly_sql is the first line only.
+ * On SQLite the handle runs with query_only, on MySQL the session is put into a
+ * read-only transaction. Either way the engine itself refuses every write on this
+ * connection, whatever the statement text looked like, and the textual check in
+ * fm_assert_readonly_sql is only the first line of defence.
  */
 function fm_pdo_ro(): PDO
 {
@@ -338,17 +349,7 @@ function fm_pdo_ro(): PDO
         if (!is_file($config['db_path'])) {
             throw new FmMcpError('The database file does not exist yet. Run mcp/bootstrap.php on the host first.');
         }
-        try {
-            $pdo = new PDO(fm_sqlite_dsn($config['db_path'], 'mode=ro'), null, null, fm_pdo_options());
-        } catch (PDOException $e) {
-            // Builds without SQLITE_OPEN_URI fall back to a normal handle; query_only
-            // then carries the read-only guarantee on its own.
-            $pdo = new PDO('sqlite:' . $config['db_path'], null, null, fm_pdo_options());
-        }
-        $pdo->exec('PRAGMA query_only = 1');
-        $pdo->exec('PRAGMA busy_timeout = 5000');
-
-        return $pdo;
+        return fm_sqlite_pdo($config['db_path'], true);
     }
 
     $pdo = fm_pdo_rw();
