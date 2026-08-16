@@ -769,6 +769,16 @@ function fm_briefing(PDO $pdo): array
           ORDER BY recorded_at, id"
     )->fetchAll();
 
+    // Older PDO builds hand integers back as strings; an id that a caller passes to
+    // resolves has to look the same whatever the host runs.
+    foreach ([&$recent, &$open] as &$rows) {
+        foreach ($rows as &$row) {
+            $row['id'] = (int) $row['id'];
+        }
+        unset($row);
+    }
+    unset($rows);
+
     $daysAgo = null;
     if ($recent !== []) {
         $last = strtotime((string) $recent[0]['recorded_at']);
