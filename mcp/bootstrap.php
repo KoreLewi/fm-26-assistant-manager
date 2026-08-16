@@ -361,6 +361,18 @@ function fm_bootstrap(bool $force): array
                 continue;
             }
 
+            // A save directory also holds notes about the career - decisions, open
+            // questions - which are JSON but carry nothing importable. Naming them as
+            // skipped keeps the log honest about what actually loaded.
+            $importable = array_intersect(
+                array_keys($payload),
+                array_merge(array_keys(fm_import_tables()), ['game_state'])
+            );
+            if ($importable === []) {
+                $lines[] = sprintf('  skipped  %-52s (not an import payload)', basename($file));
+                continue;
+            }
+
             $written = fm_import_payload($pdo, $payload, true);
             $rows = 0;
             foreach ($written as $value) {

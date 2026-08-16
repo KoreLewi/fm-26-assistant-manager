@@ -7,15 +7,61 @@ Checks:
      it applies to, in BOTH phases, character-for-character.
   3. No banned legacy role name appears anywhere in allowed_roles_index.
   4. No duplicate role strings within a single position/phase list.
+  5. Every role label recorded from a screenshot exists in the reference, or is listed
+     as a known conflict for the active save.
+
+A recorded label that the reference does not contain is not automatically wrong: the
+project's rule is that where the research and the game disagree, the game wins. So a
+disagreement is reported on every run and only fails the build when nobody has written
+down what it is.
 """
 
 from pathlib import Path
 import json
 import re
+import sqlite3
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data" / "reference" / "fm26_ai_system_prompt_v4.json"
+DB_PATH = ROOT / "fm26.sqlite3"
+SAVES = ROOT / "data" / "saves"
+
+
+def recorded_label_conflicts():
+    """Compare the labels recorded from screenshots against the reference tables.
+
+    Returns (known, unexplained). Both are empty when the database has not been built
+    yet, because there is nothing recorded to check.
+    """
+    if not DB_PATH.is_file():
+        return [], []
+
+    with sqlite3.connect(DB_PATH) as conn:
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if not {"player_roles", "fm_roles"} <= tables:
+            return [], []
+
+        conflicts = conn.execute("""
+            SELECT r.role_text, r.phase, COUNT(*) AS rows
+              FROM player_roles r
+              LEFT JOIN fm_roles f ON f.role_name = r.role_text AND f.phase = r.phase
+             WHERE f.id IS NULL
+             GROUP BY r.role_text, r.phase
+             ORDER BY r.role_text
+        """).fetchall()
+
+    accepted = {}
+    for path in sorted(SAVES.glob("*/known_role_conflicts.json")):
+        accepted.update(json.loads(path.read_text(encoding="utf-8")))
+
+    known = []
+    unexplained = []
+    for role_text, phase, rows in conflicts:
+        note = accepted.get(role_text)
+        (known if note else unexplained).append((role_text, phase, rows, note))
+    return known, unexplained
 
 
 def banned_names(prompt):
@@ -97,6 +143,20 @@ def main() -> None:
         f"FM26 role reference OK - {len(indexed)} position codes, "
         f"{total} role slots, {len(banned)} banned legacy names enforced"
     )
+
+    known, unexplained = recorded_label_conflicts()
+    for role_text, phase, rows, note in known:
+        print(f"KNOWN CONFLICT: {role_text} ({phase}, {rows} rows) - {note}")
+
+    if unexplained:
+        print("\nRecorded role labels the reference does not contain, and that are not")
+        print("written down as known conflicts:")
+        for role_text, phase, rows, _ in unexplained:
+            print(f"   {role_text} ({phase}, {rows} rows)")
+        print("\nEither the label is a transcription error and belongs fixed at its source,")
+        print("or the reference is wrong and the game wins. Write the decision into")
+        print("data/saves/<slug>/known_role_conflicts.json.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
