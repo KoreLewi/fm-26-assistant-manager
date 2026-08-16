@@ -1,0 +1,14 @@
+{
+  "session_log": [
+    {
+      "recorded_at": "2026-08-16T19:31:18+00:00",
+      "game_date": "2026-01-10",
+      "kind": "question",
+      "headline": "Which in-possession roles does the game list for a defensive midfielder?",
+      "detail": "Three recorded labels disagree with the reference: Box-to-Box Midfielder, Box-to-Box Playmaker and Holding Midfielder.",
+      "next_step": "Open the player report for Pepelu, Guido Rodriguez or Santamaria and capture the role list.",
+      "source": "session note",
+      "id": 1
+    }
+  ]
+}
