@@ -301,13 +301,13 @@ function fm_handle_http(): void
 
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-    if ($method !== 'OPTIONS' && !fm_oauth_bearer_valid()) {
+    if ($method !== 'OPTIONS' && fm_config()['require_bearer'] && !fm_oauth_bearer_valid()) {
         fm_trace('mcp-401');
         fm_send_unauthorized();
 
         return;
     }
-    fm_trace('mcp');
+    fm_trace('mcp', ['bearer' => fm_oauth_bearer_valid()]);
 
     if ($method === 'OPTIONS') {
         http_response_code(204);

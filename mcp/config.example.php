@@ -35,6 +35,11 @@ return [
     // Must be at least 32 characters.
     'secret' => 'REPLACE-WITH-64-HEX-CHARACTERS',
 
+    // Demand a bearer token in addition to the secret path. The token adds nothing on
+    // its own, since the path is the credential; set it only if a client refuses to
+    // start its OAuth flow without a 401 first.
+    'require_bearer' => false,
+
     // Maximum number of rows the query tool returns before truncating.
     'max_rows' => 500,
 

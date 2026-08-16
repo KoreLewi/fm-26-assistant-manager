@@ -228,6 +228,10 @@ function fm_normalise_config(array $config): array
         ];
     }
 
+    // Whether a request on the secret path must also carry a bearer token. The token
+    // adds nothing on its own - the path is the credential - so this exists purely to
+    // suit whichever handshake a given client insists on.
+    $config['require_bearer'] = (bool) ($config['require_bearer'] ?? false);
     $config['max_rows'] = isset($config['max_rows']) ? max(1, (int) $config['max_rows']) : 500;
     $config['log_file'] = $config['log_file'] ?? null;
     $config['repo_root'] = !empty($config['repo_root']) ? $config['repo_root'] : dirname(__DIR__);
