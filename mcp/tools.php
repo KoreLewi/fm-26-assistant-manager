@@ -16,10 +16,10 @@ const FM_REFERENCE_MAX_CHARS = 60000;
 /**
  * The committed reference documents, keyed by name.
  *
- * A reference document is any JSON file under data/ that holds no importable table and
- * no game_state — it describes the game rather than recording the save, so it lives in
- * a file rather than in a table. Nothing has to be registered: a new document is picked
- * up as soon as it is committed.
+ * The FM26 documents describe the game and are shared by every career; a tactic
+ * describes one career and is named for the directory it sits in, so the two cannot
+ * collide. Nothing has to be registered: a document is available as soon as it is
+ * committed.
  *
  * @return array<string,string> name => absolute path
  */
@@ -30,34 +30,13 @@ function fm_reference_documents(): array
         return $documents;
     }
 
-    $root = fm_config()['repo_root'] . '/data';
-    if (!is_dir($root)) {
-        return $documents = [];
-    }
-
-    $tables = fm_import_tables();
     $documents = [];
-
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
-    );
-    foreach ($iterator as $file) {
-        if (!$file->isFile() || strtolower($file->getExtension()) !== 'json') {
-            continue;
-        }
-        $payload = json_decode((string) file_get_contents($file->getPathname()), true);
-        if (!is_array($payload)) {
-            continue;
-        }
-        $keys = array_keys($payload);
-        if (array_intersect($keys, array_keys($tables)) !== [] || in_array('game_state', $keys, true)) {
-            continue;
-        }
-
-        $name = substr(str_replace([$root . '/', '\\'], ['', '/'], $file->getPathname()), 0, -5);
-        $documents[$name] = $file->getPathname();
+    foreach (glob(fm_reference_dir() . '/*.json') ?: [] as $path) {
+        $documents[basename($path, '.json')] = $path;
     }
-
+    foreach (glob(fm_save_dir() . '/tactics/*.json') ?: [] as $path) {
+        $documents['tactics/' . basename($path, '.json')] = $path;
+    }
     ksort($documents);
 
     return $documents;

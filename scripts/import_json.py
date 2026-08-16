@@ -3,7 +3,7 @@
 
 Usage:
     python3 scripts/init_db.py
-    python3 scripts/import_json.py data/initial_valencia_snapshot_2025-12-22.json
+    python3 scripts/import_json.py data/saves/<slug>/season_2025-26_matches_2026-01-07.json
 
 The importer stores raw screenshot facts separately from tactical interpretation.
 Historical rows are keyed by in-game date and are never inferred from shirt numbers.

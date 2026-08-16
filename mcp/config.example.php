@@ -40,6 +40,10 @@ return [
     // start its OAuth flow without a 401 first.
     'require_bearer' => false,
 
+    // The career directory under data/saves/ that gets loaded. Switching careers means
+    // changing this and rebuilding; the previous career stays in the repository.
+    'active_save' => 'valencia-2025-26',
+
     // Maximum number of rows the query tool returns before truncating.
     'max_rows' => 500,
 

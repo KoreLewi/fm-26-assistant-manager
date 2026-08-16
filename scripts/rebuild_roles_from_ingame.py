@@ -11,7 +11,7 @@ from pathlib import Path
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "fm26_ai_system_prompt_v4.json"
+DATA = ROOT / "data" / "reference" / "fm26_ai_system_prompt_v4.json"
 
 # Verified in-game lists, in the exact order the game displays them.
 VERIFIED = {

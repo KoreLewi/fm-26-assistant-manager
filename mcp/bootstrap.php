@@ -7,9 +7,10 @@
  *
  * Sources, in this order:
  *   1. the schema for the configured engine (db/schema.mysql.sql or db/schema.sql)
- *   2. every data/*.json.gz.b64 snapshot (gzip-compressed base64 JSON)
- *   3. data/supplemental/*.json, which continue the snapshot's row numbering
- *   4. the dated files directly under data/, then anything nested
+ *   2. the career's *.json.gz.b64 snapshot (gzip-compressed base64 JSON)
+ *   3. supplemental/*.json, which continue the snapshot's row numbering
+ *   4. the dated files in the career directory, then anything nested,
+ *      and last whatever import_json wrote since the last commit
  *
  * Foreign keys are deferred until the whole load is finished, so the committed files
  * can be replayed in plain filename order regardless of which file introduces a parent
@@ -205,41 +206,47 @@ function fm_check_foreign_keys(PDO $pdo): array
     return $problems;
 }
 
-/** Collect the committed source files in the order they have to be replayed. */
-function fm_source_files(string $root): array
+/** Collect the active career's source files in the order they have to be replayed. */
+function fm_source_files(): array
 {
-    $sources = glob($root . '/data/*.json.gz.b64') ?: [];
+    $root = fm_save_dir();
+    if (!is_dir($root)) {
+        throw new FmMcpError("The save directory {$root} does not exist.");
+    }
+
+    $sources = glob($root . '/*.json.gz.b64') ?: [];
 
     // Supplemental files extend the initial snapshot and carry explicit row ids that
     // continue its numbering, so they have to be replayed directly after it. Only then
     // come the dated top-level imports, whose rows are auto-numbered and must land
-    // above the ids already taken.
-    $supplemental = [];
-    $topLevel = [];
-    $nested = [];
-
+    // above the ids already taken. Anything written since the last commit comes last.
+    $groups = ['supplemental' => [], 'top' => [], 'nested' => [], 'incoming' => []];
     $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($root . '/data', FilesystemIterator::SKIP_DOTS)
+        new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
     );
     foreach ($iterator as $file) {
         if (!$file->isFile() || strtolower($file->getExtension()) !== 'json') {
             continue;
         }
-        $path = $file->getPathname();
-        $relative = ltrim(str_replace($root . '/data', '', $path), '/');
+        $relative = ltrim(str_replace($root, '', $file->getPathname()), '/');
         if (str_starts_with($relative, 'supplemental/')) {
-            $supplemental[] = $path;
+            $groups['supplemental'][] = $file->getPathname();
+        } elseif (str_starts_with($relative, 'incoming/')) {
+            $groups['incoming'][] = $file->getPathname();
+        } elseif (str_starts_with($relative, 'tactics/')) {
+            continue;
         } elseif (!str_contains($relative, '/')) {
-            $topLevel[] = $path;
+            $groups['top'][] = $file->getPathname();
         } else {
-            $nested[] = $path;
+            $groups['nested'][] = $file->getPathname();
         }
     }
-    sort($supplemental);
-    sort($topLevel);
-    sort($nested);
+    foreach ($groups as &$group) {
+        sort($group);
+    }
+    unset($group);
 
-    return array_merge($sources, $supplemental, $topLevel, $nested);
+    return array_merge($sources, $groups['supplemental'], $groups['top'], $groups['nested'], $groups['incoming']);
 }
 
 /**
@@ -321,7 +328,7 @@ function fm_bootstrap(bool $force): array
     }
     $lines[] = 'Schema created from db/' . basename($schemaPath);
 
-    $sources = fm_source_files($root);
+    $sources = fm_source_files();
     if ($sources === []) {
         throw new FmMcpError("No source files found under {$root}/data.");
     }

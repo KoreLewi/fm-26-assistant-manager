@@ -126,10 +126,10 @@ python3 scripts/import_initial_snapshot.py
 # Foreign keys are enforced during a Python import, so files run oldest-first and a
 # file that introduces parent rows (teams, competitions, players) runs before the files
 # that reference them. Append new imports to the end of this list in in-game date order.
-python3 scripts/import_json.py data/supplemental/filip_ugrinic_2025-12-22.json
-python3 scripts/import_json.py data/season_2025-26_matches_2026-01-07.json
-python3 scripts/import_json.py data/player_umar_sadiq_2026-01-07.json
-python3 scripts/import_json.py data/match_barcelona_away_2026-01-10.json
+python3 scripts/import_json.py data/saves/valencia-2025-26/supplemental/filip_ugrinic_2025-12-22.json
+python3 scripts/import_json.py data/saves/valencia-2025-26/season_2025-26_matches_2026-01-07.json
+python3 scripts/import_json.py data/saves/valencia-2025-26/player_umar_sadiq_2026-01-07.json
+python3 scripts/import_json.py data/saves/valencia-2025-26/match_barcelona_away_2026-01-10.json
 
 python3 scripts/verify_db.py
 python3 scripts/validate.py
@@ -183,7 +183,7 @@ the most recent import, never assumed.
 
 ## FM26 tactical reference
 
-`data/fm26_ai_system_prompt_v4.json` (v4.1) is the canonical definition of the FM26
+`data/reference/fm26_ai_system_prompt_v4.json` (v4.1) is the canonical definition of the FM26
 phase-based system: the legal In Possession and Out of Possession role list for every
 position code, banned legacy role names, preset tactical styles, and every team
 instruction with its options.
@@ -197,7 +197,7 @@ disagreed, the game won. Codes `GK, DC, DR, DL, DM, MC, AMR, AML, ST` are
 screenshot-verified; `WBR, WBL, MR, ML, AMC` are **not** and remain unverified research.
 The changelog and open questions live inside the JSON under `_changelog`.
 
-`data/fm26_role_locale_hu.json` maps the Hungarian in-game labels to those English role
+`data/reference/fm26_role_locale_hu.json` maps the Hungarian in-game labels to those English role
 names, and records the raw observed lists as source facts.
 
 ## Critical data rules

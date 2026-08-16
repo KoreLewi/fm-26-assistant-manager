@@ -232,6 +232,12 @@ function fm_normalise_config(array $config): array
     // adds nothing on its own - the path is the credential - so this exists purely to
     // suit whichever handshake a given client insists on.
     $config['require_bearer'] = (bool) ($config['require_bearer'] ?? false);
+    // Which career is loaded. The database holds exactly one at a time; the others
+    // stay in the repository, unloaded.
+    $config['active_save'] = (string) ($config['active_save'] ?? 'valencia-2025-26');
+    if (!preg_match('/^[a-z0-9][a-z0-9._-]*$/i', $config['active_save'])) {
+        throw new FmMcpError("Server is not configured: 'active_save' must be a directory name.");
+    }
     $config['max_rows'] = isset($config['max_rows']) ? max(1, (int) $config['max_rows']) : 500;
     $config['log_file'] = $config['log_file'] ?? null;
     $config['repo_root'] = !empty($config['repo_root']) ? $config['repo_root'] : dirname(__DIR__);
@@ -742,4 +748,22 @@ function fm_save_state(): array
         'latest_match_date' => $latestMatch ?: null,
         'row_counts' => $counts,
     ];
+}
+
+/** The slug of the career currently loaded. */
+function fm_active_save(): string
+{
+    return fm_config()['active_save'];
+}
+
+/** Absolute path to the active career's source files. */
+function fm_save_dir(): string
+{
+    return fm_config()['repo_root'] . '/data/saves/' . fm_active_save();
+}
+
+/** Absolute path to the FM26 reference documents, which every career shares. */
+function fm_reference_dir(): string
+{
+    return fm_config()['repo_root'] . '/data/reference';
 }

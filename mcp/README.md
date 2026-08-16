@@ -121,8 +121,8 @@ curl -X POST 'https://fm.kplev.hu/mcp/bootstrap.php?token=<secret>&confirm=rebui
 With shell access the same thing runs as `php mcp/bootstrap.php [--force]`.
 
 The build runs `db/schema.mysql.sql`, then replays every committed source file: the
-`*.json.gz.b64` snapshot first, then `data/supplemental/`, then the dated files in
-`data/`. Foreign keys are deferred for the duration of the load and every declared
+`*.json.gz.b64` snapshot first, then `supplemental/`, then the dated files in the
+active save directory. Foreign keys are deferred for the duration of the load and every declared
 foreign key is verified afterwards, so filename order cannot break the rebuild. The
 in-game clock is only ever moved forward, so a template file carrying a placeholder date
 cannot rewind the save.

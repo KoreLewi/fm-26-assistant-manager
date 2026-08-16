@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-ARCHIVE = ROOT / "data" / "initial_valencia_snapshot_2025-12-22.json.gz.b64"
+ARCHIVE = ROOT / "data" / "saves" / "valencia-2025-26" / "initial_valencia_snapshot_2025-12-22.json.gz.b64"
 IMPORTER = ROOT / "scripts" / "import_json.py"
 TEMP_JSON = ROOT / ".initial_snapshot.json"
 

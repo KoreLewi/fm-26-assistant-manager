@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the FM26 role reference (data/fm26_ai_system_prompt_v4.json).
+"""Validate the FM26 role reference (data/reference/fm26_ai_system_prompt_v4.json).
 
 Checks:
   1. Every position code in _selection_rules.position_codes exists in allowed_roles_index.
@@ -15,7 +15,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "fm26_ai_system_prompt_v4.json"
+DATA = ROOT / "data" / "reference" / "fm26_ai_system_prompt_v4.json"
 
 
 def banned_names(prompt):
