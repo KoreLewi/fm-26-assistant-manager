@@ -273,14 +273,12 @@ second, so it is always safe to delete and regenerate.
 
 ## Current save state
 
-- Club: **Valencia**, First Division, 2025/26
-- Last recorded in-game date: **2026-01-10**
-- Matches recorded: 24 (17 league + cups + friendlies)
-- Players: 27
-- Active tactic: **Mestral** — 4-1-2-2-1, Control Possession style, Positive mentality
+Ask the assistant - `save_state` answers it live, including the in-game date, the club,
+the squad size and what was last worked on. This file does not repeat it, because a
+number written here is wrong the moment anything is recorded.
 
-The in-game date advances continuously with play and is **not** fixed; it is read from
-the most recent import, never assumed.
+The career loaded at the time of writing is Valencia, 2025/26, seeded from captures made
+before the connector existed.
 
 ## What is stored
 
@@ -327,7 +325,7 @@ names, and records the raw observed lists as source facts.
 
 0. **Every statistic supplied is stored.** Any player, match, season or league data
    handed over must be written into the database. If no table can hold it, extend the
-   schema (and `scripts/import_json.py`) rather than dropping the data. Values that are
+   schema rather than dropping the data. Values that are
    truncated or unreadable on the source screen are stored as `NULL`, never guessed.
 1. **Never overwrite historical player snapshots.** A new in-game date creates a new snapshot.
 2. **Never resolve a pass-map shirt number by guessing from another match.** For every
@@ -337,7 +335,9 @@ names, and records the raw observed lists as source facts.
 4. Role labels from screenshots are stored as source facts. Tactical recommendations must
    separately validate against the legal FM26 IP/OOP role system.
 5. **Attribute numbers beat star ratings** when evaluating a player.
-6. Data only enters analysis if it is present in this repository.
+6. **Data only enters analysis if it is in the database.** Not what a screenshot
+   showed earlier in the conversation, not what a previous career had, not what is
+   generally true of the game - what the tools return.
 
 ## Data workflow
 

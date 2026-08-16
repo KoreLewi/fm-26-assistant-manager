@@ -437,24 +437,28 @@ function fm_tool_definitions(): array
             'name' => 'reference',
             'title' => 'FM26 rules and tactic reference',
             'description' =>
-                "Return the committed FM26 reference documents: the legal role system, the Hungarian "
-                . "interface vocabulary, and the tactics in use. These describe how the game works and "
-                . "are not in any database table, so the query tool cannot reach them.\n\n"
-                . "Available documents: {$documentList}.\n\n"
-                . "fm26_ai_system_prompt_v4 is the authority on legality. FM26 has no Defend/Support/"
-                . "Attack duties: every outfield player gets exactly one In Possession and one Out of "
-                . "Possession role, and a role is legal for a slot only if that exact string appears "
-                . "under the position code and phase in allowed_roles_index. It also lists the banned "
-                . "legacy role names, the preset tactical styles and every team instruction with its "
-                . "options.\n\n"
-                . "Call with no arguments for the catalogue. Then pass \"document\", and \"section\" as a "
-                . "dot-separated path to drill in — for example section "
-                . "\"FM26_AI_SYSTEM_PROMPT.2_pitch_positions_and_roles.allowed_roles_index\". A section "
-                . "larger than the response limit comes back as an outline of its keys instead of its "
-                . "content, so you can request a narrower path.\n\n"
-                . "Consult this before recommending any role or instruction. Role labels read off a "
-                . "screenshot are stored in player_roles as source facts and are not automatically legal "
-                . "for a given slot; check them here.",
+                "Read the FM26 rules: which roles the game offers for each position and phase, the "
+                . "legacy names it no longer has, the preset tactical styles, every team instruction "
+                . "with its options, and the Hungarian interface vocabulary.\n\n"
+                . "Documents: {$documentList}. Both are also loaded into tables - fm_positions, "
+                . "fm_roles, fm_banned_roles, fm_styles, fm_instructions, fm_role_locale - so a "
+                . "legality question is a query, not a reading exercise: joining player_roles or "
+                . "tactic_slots to fm_roles says outright which recorded role the game does not "
+                . "offer for that position. Use this tool for the prose the tables cannot hold: what "
+                . "a role actually does, why the system changed, what is still unverified.\n\n"
+                . "FM26 has no Defend/Support/Attack duties: every outfield player gets exactly one "
+                . "In Possession and one Out of Possession role, and a role is legal for a slot only "
+                . "if that exact string appears under that position code and phase.\n\n"
+                . "Three ways to call it. With no arguments it lists the documents. With \"search\" "
+                . "it finds every section containing a keyword, narrowest match first, and returns "
+                . "the paths with excerpts. With \"document\" and \"section\" it returns one section "
+                . "in full - a section path starts with the document name, for example "
+                . "\"fm26_ai_system_prompt_v4.FM26_AI_SYSTEM_PROMPT.2_pitch_positions_and_roles."
+                . "allowed_roles_index.ST\". A section too large to return comes back as the list of "
+                . "paths beneath it instead.\n\n"
+                . "Consult this before recommending any role or instruction. A role label read off a "
+                . "screenshot is stored in player_roles as what the screen said, which is not the "
+                . "same as being legal for the slot.",
             'inputSchema' => [
                 'type' => 'object',
                 'properties' => [

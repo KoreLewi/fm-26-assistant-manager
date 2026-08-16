@@ -46,7 +46,7 @@ grants full read and write access to the save.
 | `import_json` | Rows written per table, plus the resulting save state |
 | `save_state` | The briefing, the gaps worth closing next, and the state of the save: in-game date, season, club, squad size, row counts |
 | `session_note` | Records one line in the session log so the next conversation can pick the thread up |
-| `reference` | The FM26 rules: the legal role system, the banned legacy names, the styles, the instructions, the Hungarian vocabulary. Reads a section by path, or finds one by keyword with `search`. |
+| `reference` | The prose behind the FM26 rules: what a role does, why the system changed, what is unverified. The rules themselves are also in the `fm_` tables, so legality is a `query`. |
 
 `query` accepts a single `SELECT` (optionally starting with `WITH`). Statement chaining
 with `;`, `PRAGMA`, `SET`, and every write statement are refused before execution, and
