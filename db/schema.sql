@@ -274,3 +274,67 @@ CREATE TABLE IF NOT EXISTS league_standings (
 
 CREATE INDEX IF NOT EXISTS idx_season_stats_player ON player_season_stats(player_id, game_date);
 CREATE INDEX IF NOT EXISTS idx_standings_date ON league_standings(game_date, position);
+
+-- FM26 knowledge. Generated from data/reference/. These tables describe the game, not
+-- a career, so a save reset leaves them alone.
+
+CREATE TABLE IF NOT EXISTS fm_positions (
+    code TEXT PRIMARY KEY,
+    description TEXT,
+    screenshot_verified INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS fm_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_code TEXT NOT NULL,
+    phase TEXT NOT NULL CHECK(phase IN ('IP', 'OOP')),
+    role_name TEXT NOT NULL,
+    UNIQUE(position_code, phase, role_name),
+    FOREIGN KEY(position_code) REFERENCES fm_positions(code)
+);
+
+CREATE TABLE IF NOT EXISTS fm_banned_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role_name TEXT NOT NULL UNIQUE,
+    replacement TEXT,
+    note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS fm_styles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_en TEXT NOT NULL UNIQUE,
+    mentality_lean TEXT,
+    philosophy TEXT,
+    details TEXT
+);
+
+CREATE TABLE IF NOT EXISTS fm_instructions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phase TEXT NOT NULL CHECK(phase IN ('in_possession', 'out_of_possession')),
+    group_name TEXT NOT NULL,
+    instruction_en TEXT NOT NULL,
+    instruction_hu TEXT,
+    options TEXT,
+    note TEXT,
+    UNIQUE(phase, group_name, instruction_en)
+);
+
+CREATE TABLE IF NOT EXISTS fm_role_locale (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    hu TEXT NOT NULL,
+    en TEXT NOT NULL,
+    UNIQUE(kind, hu, en)
+);
+
+CREATE TABLE IF NOT EXISTS fm_reference (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    document TEXT NOT NULL,
+    path TEXT NOT NULL,
+    title TEXT,
+    text TEXT NOT NULL,
+    UNIQUE(document, path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fm_roles_position ON fm_roles(position_code, phase);
+CREATE INDEX IF NOT EXISTS idx_fm_reference_document ON fm_reference(document);

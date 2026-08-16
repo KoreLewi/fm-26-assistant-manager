@@ -305,3 +305,72 @@ CREATE TABLE IF NOT EXISTS scout_reports (
     CONSTRAINT fk_scout_reports_player FOREIGN KEY (player_id) REFERENCES players(id),
     CONSTRAINT fk_scout_reports_team FOREIGN KEY (current_team_id) REFERENCES teams(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- FM26 knowledge. Generated from data/reference/. These tables describe the game, not
+-- a career, so a save reset leaves them alone. The vocabulary columns compare exactly,
+-- because the table collation is case-insensitive and a role name differing only in
+-- case is a different name.
+
+CREATE TABLE IF NOT EXISTS fm_positions (
+    code VARCHAR(8) COLLATE utf8mb4_bin NOT NULL PRIMARY KEY,
+    description TEXT,
+    screenshot_verified TINYINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fm_roles (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    position_code VARCHAR(8) COLLATE utf8mb4_bin NOT NULL,
+    phase VARCHAR(4) COLLATE utf8mb4_bin NOT NULL,
+    role_name VARCHAR(128) COLLATE utf8mb4_bin NOT NULL,
+    UNIQUE KEY uq_fm_roles (position_code, phase, role_name),
+    KEY idx_fm_roles_position (position_code, phase),
+    CONSTRAINT fk_fm_roles_position FOREIGN KEY (position_code) REFERENCES fm_positions(code),
+    CONSTRAINT chk_fm_roles_phase CHECK (phase IN ('IP','OOP'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fm_banned_roles (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+    replacement TEXT,
+    note TEXT,
+    UNIQUE KEY uq_fm_banned_roles (role_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fm_styles (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name_en VARCHAR(191) NOT NULL,
+    mentality_lean VARCHAR(64),
+    philosophy TEXT,
+    details LONGTEXT,
+    UNIQUE KEY uq_fm_styles (name_en)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fm_instructions (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    phase VARCHAR(20) COLLATE utf8mb4_bin NOT NULL,
+    group_name VARCHAR(64) NOT NULL,
+    instruction_en VARCHAR(128) NOT NULL,
+    instruction_hu VARCHAR(191),
+    options TEXT,
+    note TEXT,
+    UNIQUE KEY uq_fm_instructions (phase, group_name, instruction_en),
+    CONSTRAINT chk_fm_instructions_phase CHECK (phase IN ('in_possession','out_of_possession'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fm_role_locale (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    kind VARCHAR(32) NOT NULL,
+    hu VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+    en VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+    UNIQUE KEY uq_fm_role_locale (kind, hu, en)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fm_reference (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    document VARCHAR(64) NOT NULL,
+    path VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+    title VARCHAR(191),
+    text LONGTEXT NOT NULL,
+    UNIQUE KEY uq_fm_reference (document, path),
+    KEY idx_fm_reference_document (document)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
