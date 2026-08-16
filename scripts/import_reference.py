@@ -25,6 +25,15 @@ DELETE_ORDER = ("fm_reference", "fm_role_locale", "fm_instructions",
                 "fm_styles", "fm_banned_roles", "fm_roles", "fm_positions")
 
 
+def _encode(node) -> str:
+    """Encode a node the way mcp/reference.php does, so the two rows compare equal.
+
+    The default separators put a space after every comma and colon; PHP writes neither,
+    and the stored text has to match byte for byte.
+    """
+    return json.dumps(node, ensure_ascii=False, separators=(",", ":"))
+
+
 def _load(name: str, reference_dir: Path) -> dict:
     return json.loads((reference_dir / f"{name}.json").read_text(encoding="utf-8"))
 
@@ -87,7 +96,7 @@ def _styles(prompt: dict) -> list:
             "name_en": name_en,
             "mentality_lean": body.get("mentality_lean"),
             "philosophy": body.get("philosophy"),
-            "details": json.dumps(body, ensure_ascii=False),
+            "details": _encode(body),
         })
     return rows
 
@@ -102,7 +111,7 @@ def _instructions(prompt: dict) -> list:
             if not isinstance(items, dict):
                 continue
             for instruction_en, body in items.items():
-                options = json.dumps(body, ensure_ascii=False) if isinstance(body, (dict, list)) else str(body)
+                options = _encode(body) if isinstance(body, (dict, list)) else str(body)
                 rows.append({
                     "phase": phase,
                     "group_name": group_name,
@@ -154,7 +163,7 @@ def _reference_sections(document: str, payload: dict) -> list:
                 "document": document,
                 "path": ".".join(path),
                 "title": path[-1],
-                "text": json.dumps(node, ensure_ascii=False),
+                "text": _encode(node),
             })
         if isinstance(node, dict):
             for key, value in node.items():

@@ -32,6 +32,7 @@ ini_set('html_errors', '0');
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/reference.php';
 require_once __DIR__ . '/oauth.php';
 
 /** Host facts needed to diagnose an install without shell access. */
@@ -327,6 +328,11 @@ function fm_bootstrap(bool $force): array
         }
     }
     $lines[] = 'Schema created from db/' . basename($schemaPath);
+
+    // The reference describes the game, so it loads for every career.
+    foreach (fm_reference_import($pdo) as $table => $count) {
+        $lines[] = sprintf('  reference %-52s %5d rows', $table, $count);
+    }
 
     $sources = fm_source_files();
     if ($sources === []) {
