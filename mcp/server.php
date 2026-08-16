@@ -240,7 +240,10 @@ function fm_handle_message(array $message): ?array
                         . 'Start with save_state. It carries a briefing - what was last worked on, '
                         . 'what comes next, and which questions are still open - along with the '
                         . 'current in-game date and season. Read it before answering anything '
-                        . 'time-dependent, and continue from where it says the work stopped.'
+                        . 'time-dependent, and continue from where it says the work stopped. It also '
+                        . 'reports what the record is missing, ordered by how much one screenshot '
+                        . 'would close; say so when a question cannot be answered without it, rather '
+                        . 'than working around the hole.'
                         . "\n\n"
                         . 'Finish every substantive step with session_note: data recorded, a '
                         . 'conclusion reached, a decision taken, a question left open. A step that '
@@ -697,6 +700,32 @@ function fm_selftest(): int
             $persisted = ($writtenPayload['teams'][0]['name'] ?? '') === 'Persisted FC';
         }
         $check('an import is also written to the save directory', $persisted);
+
+        // 12b2. the state says what is worth capturing next
+        $gapsState = json_decode(
+            fm_handle_message([
+                'jsonrpc' => '2.0',
+                'id' => 30,
+                'method' => 'tools/call',
+                'params' => ['name' => 'save_state', 'arguments' => []],
+            ])['result']['content'][0]['text'] ?? '{}',
+            true
+        );
+        $gaps = $gapsState['gaps'] ?? [];
+        $byKind = [];
+        foreach ($gaps['items'] ?? [] as $item) {
+            $byKind[$item['gap']] = $item;
+        }
+        $check(
+            'the state names what is worth capturing next',
+            !empty($gaps['next_capture'])
+                // Five seeded players have no attributes; the imported one does.
+                && ($byKind['players_without_attributes']['count'] ?? null) === 5
+                && in_array('Player One', $byKind['players_without_attributes']['examples'] ?? [], true)
+                && !in_array('Imported Player', $byKind['players_without_attributes']['examples'] ?? [], true)
+                // Nothing is recorded about any match, so that gap is silent, not zero-filled.
+                && !isset($byKind['matches_without_player_stats'])
+        );
 
         // 12c. a session note is written and comes back in the next briefing
         $noteCall = fm_handle_message([

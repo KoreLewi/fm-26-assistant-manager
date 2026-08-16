@@ -353,11 +353,17 @@ function fm_tool_definitions(): array
             'name' => 'save_state',
             'title' => 'Current save state',
             'description' =>
-                "Return the state of the save: the current in-game date and season, the club with the "
-                . "largest squad and its squad size, the most recent player snapshot date, the most recent "
-                . "match date, and the row count of every table.\n\n"
-                . "Call this at the start of a session to establish which in-game date the data reflects "
-                . "before answering anything time-dependent. It takes no arguments and never changes data.",
+                "Return everything needed to pick the work up: a briefing of what was last worked "
+                . "on, what comes next and which questions are still open; the gaps worth closing with "
+                . "the next screenshot; and the state of the save itself - current in-game date, season, "
+                . "club, squad size, latest snapshot and match dates, and the row count of every "
+                . "table.\n\n"
+                . "Call this first in every conversation. This connector keeps no memory between them, "
+                . "so the briefing is the only thing carrying the thread across, and the in-game date it "
+                . "reports is what every time-dependent answer depends on.\n\n"
+                . "Tell the manager what the gaps say when they matter: they are ordered by how much a "
+                . "single screenshot closes, so the first one is the capture worth making next. It takes "
+                . "no arguments and never changes data.",
             'inputSchema' => [
                 'type' => 'object',
                 'properties' => new stdClass(),

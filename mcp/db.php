@@ -798,6 +798,142 @@ function fm_briefing(PDO $pdo): array
     ];
 }
 
+/** How many names a gap lists as examples before it just gives the count. */
+const FM_GAP_EXAMPLES = 5;
+
+/**
+ * What is missing from the record, and which capture would close the most of it.
+ *
+ * The data arrives one screenshot at a time, so it is always uneven: a match with a
+ * result but no player ratings, a player in the squad nobody has ever opened. The
+ * database knows where its own holes are; saying so turns the next screenshot from a
+ * guess into a decision.
+ *
+ * A gap is reported only when it exists. Listing every check with a zero would bury the
+ * one that matters.
+ */
+function fm_gaps(PDO $pdo, ?string $currentGameDate): array
+{
+    $items = [];
+
+    /**
+     * @param int $capturesNeeded How many screenshots close this gap: one screen that
+     *                            covers everything, or one per outstanding item.
+     */
+    $add = function (
+        string $gap,
+        int $count,
+        array $examples,
+        string $capture,
+        string $why,
+        int $capturesNeeded
+    ) use (&$items): void {
+        if ($count > 0) {
+            $items[] = [
+                'gap' => $gap,
+                'count' => $count,
+                'captures_needed' => max(1, $capturesNeeded),
+                'closes_per_capture' => (int) round($count / max(1, $capturesNeeded)),
+                'examples' => $examples,
+                'capture' => $capture,
+                'why' => $why,
+            ];
+        }
+    };
+
+    // A player nobody has ever opened cannot be judged at all - attributes beat stars,
+    // and there are neither.
+    $rows = $pdo->query(
+        'SELECT p.name FROM players p
+          LEFT JOIN player_attributes a ON a.player_id = p.id
+          WHERE a.id IS NULL GROUP BY p.id, p.name ORDER BY p.name'
+    )->fetchAll();
+    $add(
+        'players_without_attributes',
+        count($rows),
+        array_slice(array_column($rows, 'name'), 0, FM_GAP_EXAMPLES),
+        'Open the player screen for each and capture the attribute panel.',
+        'Without attributes a player can only be judged on stars, which the data rules rank lower.',
+        count($rows)
+    );
+
+    // A match with a result but nothing about who played it.
+    $rows = $pdo->query(
+        'SELECT m.match_date, m.opponent FROM matches m
+          LEFT JOIN match_players mp ON mp.match_id = m.id
+          WHERE mp.id IS NULL GROUP BY m.id, m.match_date, m.opponent
+          ORDER BY m.match_date DESC'
+    )->fetchAll();
+    $add(
+        'matches_without_player_stats',
+        count($rows),
+        array_slice(array_map(
+            static fn ($r) => $r['match_date'] . ' ' . $r['opponent'],
+            $rows
+        ), 0, FM_GAP_EXAMPLES),
+        'Open the match, then Data Hub > Player Statistics, and capture the table.',
+        'Minutes, ratings and distances are what turn a result into something to learn from.',
+        count($rows)
+    );
+
+    // A match nobody has a pass map for.
+    $rows = $pdo->query(
+        'SELECT m.match_date, m.opponent FROM matches m
+          LEFT JOIN pass_map_nodes n ON n.match_id = m.id
+          WHERE n.id IS NULL GROUP BY m.id, m.match_date, m.opponent
+          ORDER BY m.match_date DESC'
+    )->fetchAll();
+    $add(
+        'matches_without_pass_map',
+        count($rows),
+        array_slice(array_map(
+            static fn ($r) => $r['match_date'] . ' ' . $r['opponent'],
+            $rows
+        ), 0, FM_GAP_EXAMPLES),
+        'Open the match, then Data Hub > Pass Map, and capture it with the shirt numbers visible.',
+        'The pass map is the only record of how the shape actually connected.',
+        count($rows)
+    );
+
+    // Squad members whose recorded state predates the save's current date.
+    if ($currentGameDate !== null && $currentGameDate !== '') {
+        $stmt = $pdo->prepare(
+            'SELECT p.name FROM players p
+              LEFT JOIN player_snapshots s ON s.player_id = p.id AND s.game_date = ?
+              WHERE s.id IS NULL GROUP BY p.id, p.name ORDER BY p.name'
+        );
+        $stmt->execute([$currentGameDate]);
+        $rows = $stmt->fetchAll();
+        $add(
+            'players_without_a_snapshot_at_the_current_date',
+            count($rows),
+            array_slice(array_column($rows, 'name'), 0, FM_GAP_EXAMPLES),
+            'Capture the squad screen at the current in-game date.',
+            'Value, wage, contract and condition all move with time; the newest record here is older than the save.',
+            1
+        );
+    }
+
+    // One squad screen can close what a hundred separate player screens would, so the
+    // ranking is what a single screenshot buys - not how big the hole is.
+    usort($items, static fn ($a, $b) => $b['closes_per_capture'] <=> $a['closes_per_capture']);
+
+    return [
+        'gap_count' => count($items),
+        'next_capture' => $items === []
+            ? 'Nothing obvious is missing. Capture whatever the next question needs.'
+            : sprintf(
+                '%s One screenshot closes %d of %d outstanding.',
+                $items[0]['capture'],
+                $items[0]['closes_per_capture'],
+                $items[0]['count']
+            ),
+        'items' => $items,
+        'note' => 'Ordered by how much one screenshot closes, not by how large the gap is. '
+            . 'Only gaps that exist are listed.',
+    ];
+}
+
 /** Current save state: in-game date, season, club and per-table row counts. */
 function fm_save_state(): array
 {
@@ -828,9 +964,11 @@ function fm_save_state(): array
     }
 
     $briefing = in_array('session_log', $names, true) ? fm_briefing($pdo) : null;
+    $currentGameDate = $gameState['current_game_date'] ?? null;
 
     return [
         'briefing' => $briefing,
+        'gaps' => fm_gaps($pdo, $currentGameDate),
         'current_game_date' => $gameState['current_game_date'] ?? null,
         'season' => $gameState['season'] ?? null,
         'game_state_notes' => $gameState['notes'] ?? null,

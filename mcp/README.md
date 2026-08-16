@@ -44,7 +44,7 @@ grants full read and write access to the save.
 | `query` | Rows of one read-only `SELECT`, with column names and a truncation flag |
 | `list_tables` | Every table with its columns, row count, and whether `import_json` writes to it |
 | `import_json` | Rows written per table, plus the resulting save state |
-| `save_state` | The briefing - what was last worked on, what comes next, which questions are open - plus in-game date, season, club, squad size and row counts |
+| `save_state` | The briefing, the gaps worth closing next, and the state of the save: in-game date, season, club, squad size, row counts |
 | `session_note` | Records one line in the session log so the next conversation can pick the thread up |
 | `reference` | The FM26 rules: the legal role system, the banned legacy names, the styles, the instructions, the Hungarian vocabulary. Reads a section by path, or finds one by keyword with `search`. |
 
@@ -55,6 +55,11 @@ Results are capped at `max_rows` (default 500); a truncated result says so.
 
 `condition` is a MySQL keyword, so a query reading that column of `match_players` needs
 it backquoted: ``SELECT `condition` FROM match_players``.
+
+`save_state` also reports where the record is thin - matches with a result but no player
+ratings, players nobody has opened, a squad whose newest snapshot predates the save's
+own date. The list is ordered by how much a single screenshot closes rather than by how
+large the gap is, because one squad screen can settle what a dozen player screens would.
 
 A connector keeps no state between conversations: every chat starts blank, and the only
 thing that carries across is what is in the database. `session_log` is that thread -

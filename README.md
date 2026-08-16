@@ -48,6 +48,10 @@ nothing is written into the save without you seeing it.
 4. **Stop whenever.** It writes down where the work stopped, so the next conversation
    opens with it.
 
+Ask *"what should I capture next?"* and it answers from the record rather than from
+taste: it knows which matches have a result but no player ratings, which players nobody
+has ever opened, and which single screenshot closes the most at once.
+
 ### What it can answer now
 
 Questions that need the squad, the matches and the FM26 rule set at the same time:
@@ -116,11 +120,12 @@ way in: nothing may be recalled from chat memory or from a previous save.
 | `reference` | The FM26 rules: legal roles per position, banned legacy names, tactical styles, team instructions, and the Hungarian interface vocabulary |
 | `session_note` | Record what was done, decided or left open, so the next conversation continues from it |
 
+
 ### Order of work in a session
 
 1. **`save_state` first.** It returns the briefing — what was last worked on, what
-   comes next, and which questions are still open — along with the in-game date the
-   data reflects. A connector has no memory between conversations, so this is the only
+   comes next, and which questions are still open — the gaps worth closing with the next
+   screenshot, and the in-game date the data reflects. A connector has no memory between conversations, so this is the only
    thing that carries the thread across; read it before answering anything
    time-dependent, and continue from where it says the work stopped.
 2. **`reference` before any tactical recommendation.** `fm26_ai_system_prompt_v4` is
