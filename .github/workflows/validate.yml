@@ -29,6 +29,13 @@ jobs:
   mcp:
     runs-on: ubuntu-latest
 
+    # 8.0 is what the host runs; 8.2 catches anything that only breaks on a newer
+    # engine. A function added in 8.1 must not slip into the server unnoticed.
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.0', '8.2']
+
     services:
       mysql:
         image: mysql:8.0
@@ -50,7 +57,7 @@ jobs:
           python-version: '3.x'
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php-version }}
           extensions: pdo_mysql, pdo_sqlite, sqlite3, zlib, json
           coverage: none
 

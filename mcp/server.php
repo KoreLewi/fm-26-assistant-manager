@@ -38,6 +38,10 @@ function fm_log(string $message): void
         $file = null;
     }
     if (!$file) {
+        // No log file configured: fall back to the host's PHP error log, so a failure
+        // is never silent.
+        error_log('fm26-mcp: ' . $message);
+
         return;
     }
     @file_put_contents(
@@ -45,6 +49,33 @@ function fm_log(string $message): void
         sprintf("[%s] %s\n", gmdate('c'), $message),
         FILE_APPEND | LOCK_EX
     );
+}
+
+/**
+ * Turn a fatal error into a JSON-RPC error object.
+ *
+ * Without this a fatal leaves an empty 500 with no clue what happened, because
+ * display_errors is off. The message goes to the log; the client is told only that the
+ * server failed.
+ */
+function fm_register_fatal_handler(): void
+{
+    register_shutdown_function(static function (): void {
+        $error = error_get_last();
+        if ($error === null || !in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+            return;
+        }
+
+        fm_log(sprintf('Fatal: %s in %s:%d', $error['message'], $error['file'], $error['line']));
+
+        if (headers_sent()) {
+            return;
+        }
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        echo json_encode(fm_rpc_error(null, -32603, 'Internal server error.'));
+    });
 }
 
 /** Read the capability token from the request, whichever way the host passes it. */
@@ -231,6 +262,8 @@ function fm_handle_message(array $message): ?array
 
 function fm_handle_http(): void
 {
+    fm_register_fatal_handler();
+
     if (!fm_auth_ok(fm_request_token())) {
         fm_send_not_found();
 

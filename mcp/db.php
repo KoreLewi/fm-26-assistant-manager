@@ -26,6 +26,24 @@ if (!extension_loaded('json')) {
     exit("The PHP extension json is required but not loaded.\n");
 }
 
+if (!function_exists('array_is_list')) {
+    /**
+     * Available from PHP 8.1. The minimum supported version is 8.0, so it is defined
+     * here rather than avoided at every call site.
+     */
+    function array_is_list(array $array): bool
+    {
+        $expected = 0;
+        foreach ($array as $key => $_) {
+            if ($key !== $expected++) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
 /** Thrown for problems that are safe to report back to the caller. */
 class FmMcpError extends RuntimeException
 {
