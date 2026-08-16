@@ -100,9 +100,14 @@ Generated from `data/reference/*.json`. Never dropped by a save switch.
 | `fm_roles` | `id`, `position_code`, `phase` (`IP`/`OOP`), `role_name`; unique on the three | 107 |
 | `fm_banned_roles` | `id`, `role_name` unique, `replacement`, `note` | 24 |
 | `fm_styles` | `id`, `name_en` unique, `name_hu`, `description` | 11 |
-| `fm_instructions` | `id`, `phase`, `instruction_en`, `instruction_hu`, `options`, `note`; unique on phase+instruction_en | ~40 |
-| `fm_role_locale` | `id`, `kind` (`role`/`position`/`instruction`/`trait`), `hu`, `en`; unique on the three | ~200 |
+| `fm_instructions` | `id`, `phase`, `group_name`, `instruction_en`, `instruction_hu`, `options`, `note`; unique on phase+group_name+instruction_en | 31 |
+| `fm_role_locale` | `id`, `kind` (`role`/`position`/`instruction`/`trait`), `hu`, `en`; unique on the three | ~270 |
 | `fm_reference` | `id`, `document`, `path`, `title`, `text`; unique on document+path | ~300 |
+
+`fm_instructions.group_name` keeps the grouping the game uses — in possession
+`Overview` (7), `Buildup` (4), `Progression` (4), `Final Third` (4); out of possession
+`Overview` (6), `High Press` (2), `Mid Block` (2), `Low Block` (2) — so an instruction
+can be found the way it is presented on screen.
 
 `fm_positions.screenshot_verified` carries the distinction the reference already makes:
 `GK, DC, DR, DL, DM, MC, AMR, AML, ST` are verified against the game; `WBR, WBL, MR, ML,
@@ -220,8 +225,9 @@ are generated from committed files.
 The existing three-way parity check stays: Python on SQLite, PHP on SQLite, PHP on
 MySQL, compared row by row. Added to CI:
 
-1. **Reference load** — `fm_roles` has 107 rows across 14 position codes, `fm_banned_roles`
-   24, `fm_styles` 11; `fm_reference` covers every top-level section of both documents.
+1. **Reference load** — `fm_roles` has 107 rows across 14 position codes,
+   `fm_banned_roles` 24, `fm_styles` 11, `fm_instructions` 31 across 8 groups;
+   `fm_reference` covers every top-level section of both documents.
 2. **Save reset keeps the reference** — count the `fm_` rows, reset, count again, assert
    equality, and assert the save tables were repopulated.
 3. **Tactic load** — 11 slots, both phases populated, instructions present, both observed
