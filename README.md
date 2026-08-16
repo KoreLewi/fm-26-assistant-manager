@@ -4,6 +4,12 @@ Persistent data layer for a Football Manager 2026 save, used by Claude acting as
 assistant manager. The repository is the **single source of truth**: nothing may be
 recalled from chat memory or a previous save.
 
+Two readers use this file. **"Using it"** is the manager's guide: adding the connector,
+the loop while you play, what to ask, what to fix when something looks wrong.
+**"Working through the MCP connector"** onwards is the assistant's operating manual: the
+tools, the rules it must follow, and how the data is shaped. Everything below that is
+how the thing is built.
+
 ## Principle
 
 **Screenshot / manual input → structured JSON → database → SQL query → tactical analysis**
@@ -12,6 +18,88 @@ Raw facts are kept separately from interpretations. Historical records are never
 overwritten. The database is *generated*, not stored — the committed JSON is the real
 data. It is rebuilt from those files in under a second, on MySQL for the hosted MCP
 server and on SQLite for local work.
+
+## Using it
+
+The assistant is a connector, not a chat window: it is added once and then available in
+every conversation. Its URL contains a secret, so it is not written down here - it lives
+in `mcp/config.php`, which is not in this repository. Treat that URL as a password.
+
+**Add it once.** In claude.ai: Settings → Connectors → Add custom connector, paste the
+URL, leave the OAuth fields empty. In Claude Code:
+
+```bash
+claude mcp add --transport http fm26 "<the URL from mcp/config.php>"
+```
+
+Set the four read-only tools to run without asking; leave `import_json` on approval, so
+nothing is written into the save without you seeing it.
+
+### The loop while you play
+
+1. **Play.** When something worth keeping happens - a match, a new signing, a squad
+   screen you want on record - take the screenshot.
+2. **Paste it and say what it is.** "This is the Elche match", "Pepelu's attributes on
+   7 January". The assistant reads the values off the screen and records them. It stores
+   what is legible and leaves the rest empty rather than filling gaps with plausible
+   numbers.
+3. **Ask.** It answers from the database only. If the answer needs data that was never
+   captured, it says so instead of estimating.
+4. **Stop whenever.** It writes down where the work stopped, so the next conversation
+   opens with it.
+
+### What it can answer now
+
+Questions that need the squad, the matches and the FM26 rule set at the same time:
+
+- *"Who should play the DM slot in Mestral, and does the role suit him?"* - the tactic,
+  the line-ups and the legal role list are all in the database, so this is one query.
+- *"Which of my players are recorded with a role the game does not actually offer?"*
+- *"How has Umar Sadiq's finishing changed since December?"* - dated rows, so trends are
+  real rather than remembered.
+- *"What does the reference say about the Half Back?"* - keyword search over every
+  section of both reference documents.
+
+### What it will not do
+
+- **It will not guess.** A value that was not legible is stored as `NULL` and stays
+  `NULL`. A role label read off a screen is kept as what the screen said, and is checked
+  against the rule set separately.
+- **It will not remember by itself.** Between conversations it knows only what was
+  written into `session_log`. That is why every substantive step ends with a note.
+- **It will not use another save.** One career is loaded at a time; nothing from a
+  previous one is visible.
+
+### Housekeeping
+
+Data recorded through the connector lands on the host. Bring it back and commit it so
+the repository stays the source of truth:
+
+```bash
+curl 'https://<host>/mcp/bootstrap.php?token=<secret>&pull=1' > /tmp/incoming.json
+# review it, then save the payloads under data/saves/<slug>/ and commit
+```
+
+Rebuilding the hosted database is safe at any time - it is generated from the committed
+files and from whatever the connector wrote since:
+
+```bash
+curl -X POST 'https://<host>/mcp/bootstrap.php?token=<secret>&confirm=rebuild&force=1'
+```
+
+### When something looks wrong
+
+Ask the assistant for `save_state` first: it names the in-game date the data reflects,
+and a stale date explains most surprising answers. Locally, these say whether the data
+itself is sound:
+
+```bash
+python3 scripts/verify_db.py        # the initial dataset is intact
+python3 scripts/validate.py         # integrity rules
+python3 scripts/validate_roles.py   # recorded role labels vs the FM26 rule set
+python3 scripts/verify_reference.py # the rule set loaded completely
+python3 scripts/verify_tactic.py    # the tactic resolved to players and positions
+```
 
 ## Working through the MCP connector
 
