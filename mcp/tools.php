@@ -318,9 +318,14 @@ function fm_tool_definitions(): array
                 "Write structured FM26 data into the database and return the number of rows written per "
                 . "table. This is the only way to add data.\n\n"
                 . "The payload is an object whose keys are table names and whose values are arrays of row "
-                . "objects, plus an optional \"game_state\" object with current_game_date, season and notes. "
-                . "Writable tables: {$tableList}. Row keys must be real column names; an unknown column "
-                . "aborts the whole import.\n\n"
+                . "objects. Writable tables: {$tableList}. Row keys must be real column names; an unknown "
+                . "column aborts the whole import.\n\n"
+                . "The save's clock follows the data. Recording anything dated - a match, a snapshot, a "
+                . "set of attributes - moves current_game_date forward to the latest date in the payload, "
+                . "and the result reports it as game_date_advanced_to. It never moves backwards, so "
+                . "capturing an old screen late does not rewind the save. Send a \"game_state\" object "
+                . "with current_game_date, season and notes only to state the date outright, which "
+                . "overrides what the rows imply.\n\n"
                 . "Rows are written with INSERT OR REPLACE keyed on the primary key, so supplying an "
                 . "existing id overwrites that row. Historical rows (player_snapshots, player_attributes, "
                 . "player_roles) are keyed by in-game date: record a new date as a new row instead of "
@@ -532,9 +537,13 @@ function fm_call_tool(string $name, array $arguments): array
                 }
             }
 
+            $advancedTo = $written['_game_date_advanced_to'] ?? null;
+            unset($written['_game_date_advanced_to']);
+
             return fm_tool_result([
                 'rows_written' => $written,
                 'total_rows_written' => $total,
+                'game_date_advanced_to' => $advancedTo,
                 'persisted_as' => $persistedAs,
                 'state' => fm_save_state(),
             ]);

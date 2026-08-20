@@ -727,6 +727,59 @@ function fm_selftest(): int
                 && !isset($byKind['matches_without_player_stats'])
         );
 
+        // 12b1. recording something dated later moves the save's clock forward
+        fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 31,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'import_json',
+                'arguments' => ['payload' => [
+                    'game_state' => ['current_game_date' => '2026-01-10', 'season' => '2025/26'],
+                ]],
+            ],
+        ]);
+        $advanceCall = fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 32,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'import_json',
+                'arguments' => ['payload' => [
+                    'competitions' => [['id' => 1, 'name' => 'Selftest League', 'season' => '2025/26']],
+                    'matches' => [[
+                        'id' => 1, 'match_date' => '2026-02-16', 'competition_id' => 1,
+                        'opponent' => 'Selftest United', 'home_away' => 'home',
+                    ]],
+                ]],
+            ],
+        ]);
+        $advanced = json_decode($advanceCall['result']['content'][0]['text'] ?? '{}', true);
+
+        // Something dated earlier must not drag it back.
+        fm_handle_message([
+            'jsonrpc' => '2.0',
+            'id' => 33,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'import_json',
+                'arguments' => ['payload' => [
+                    'matches' => [[
+                        'id' => 2, 'match_date' => '2025-09-01', 'competition_id' => 1,
+                        'opponent' => 'Older Fixture', 'home_away' => 'away',
+                    ]],
+                ]],
+            ],
+        ]);
+        $stillForward = fm_save_state()['current_game_date'] ?? null;
+
+        $check(
+            'a later dated row moves the clock forward, an earlier one does not',
+            ($advanced['game_date_advanced_to'] ?? null) === '2026-02-16'
+                && ($advanced['state']['current_game_date'] ?? null) === '2026-02-16'
+                && $stillForward === '2026-02-16'
+        );
+
         // 12c. a session note is written and comes back in the next briefing
         $noteCall = fm_handle_message([
             'jsonrpc' => '2.0',

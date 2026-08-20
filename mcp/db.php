@@ -637,6 +637,44 @@ function fm_list_tables(): array
 }
 
 /**
+ * Which column carries the in-game date each table is dated by.
+ *
+ * session_log is left out on purpose: its date is stamped from the clock this drives,
+ * so reading it back would be circular.
+ */
+function fm_dated_columns(): array
+{
+    return [
+        'matches' => 'match_date',
+        'player_snapshots' => 'game_date',
+        'player_attributes' => 'game_date',
+        'player_roles' => 'game_date',
+        'player_traits' => 'game_date',
+        'player_season_stats' => 'game_date',
+        'league_standings' => 'game_date',
+        'player_evaluations' => 'evaluation_game_date',
+        'scout_reports' => 'scout_game_date',
+        'tactics' => 'game_date',
+    ];
+}
+
+/** The latest in-game date anywhere in a payload, or null if it carries none. */
+function fm_payload_latest_date(array $payload): ?string
+{
+    $latest = null;
+    foreach (fm_dated_columns() as $table => $column) {
+        foreach ($payload[$table] ?? [] as $row) {
+            $value = is_array($row) ? ($row[$column] ?? null) : null;
+            if (is_string($value) && $value !== '' && ($latest === null || $value > $latest)) {
+                $latest = $value;
+            }
+        }
+    }
+
+    return $latest;
+}
+
+/**
  * Import one payload in the shape of data/import_template.json.
  *
  * @param bool $monotonicGameState When true the in-game clock is only moved forward.
@@ -717,6 +755,31 @@ function fm_import_payload(PDO $pdo, array $payload, bool $monotonicGameState = 
             $n++;
         }
         $written[$table] = $n;
+    }
+
+    // The save's clock follows the data. Recording a match played in February means the
+    // save has reached February, so nobody has to state it separately - and it only ever
+    // moves forward, because a late capture of an old screen is not time travel.
+    if (!isset($written['game_state'])) {
+        $latest = fm_payload_latest_date($payload);
+        if ($latest !== null) {
+            $current = $pdo->query('SELECT current_game_date FROM game_state WHERE id = 1')->fetchColumn();
+            if ($current === false || $current === null || $latest > (string) $current) {
+                $stmt = $pdo->prepare(
+                    $replace . ' game_state (' . fm_ident('id') . ', ' . fm_ident('current_game_date')
+                    . ', ' . fm_ident('season') . ', ' . fm_ident('notes') . ') VALUES (1, ?, ?, ?)'
+                );
+                $season = $pdo->query('SELECT season FROM game_state WHERE id = 1')->fetchColumn();
+                $notes = $pdo->query('SELECT notes FROM game_state WHERE id = 1')->fetchColumn();
+                $stmt->execute([
+                    $latest,
+                    $season !== false ? $season : null,
+                    $notes !== false ? $notes : null,
+                ]);
+                $written['game_state'] = 1;
+                $written['_game_date_advanced_to'] = $latest;
+            }
+        }
     }
 
     if ($unknown !== []) {
